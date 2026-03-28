@@ -73,6 +73,23 @@
 - No business calculations that must be authoritative.
 - UI only consumes server-calculated values for critical totals/rules.
 
+## 3.1) Feature Organization (Vertical Slices)
+
+- Use Clean Architecture for dependency boundaries.
+- Use vertical slices for feature organization and delivery.
+- Each feature slice spans the needed parts of:
+  - `Application` (commands/queries/validators/contracts)
+  - `Server` (API endpoints for the feature)
+  - `cedadventurecrm.client` (feature pages/components/api calls)
+- Suggested first slices:
+  - `Customers`
+  - `Programs`
+  - `Departures`
+  - `Bookings`
+  - `Payments`
+  - `Documents`
+- `Domain` and `Infrastructure` remain shared technical/business foundations, while use-case flow is implemented per feature slice.
+
 ## 4) Authentication and Authorization
 
 - ASP.NET Core Identity for employees.
@@ -254,16 +271,16 @@
 
 1. Reshape solution into Domain/Application/Infrastructure + Server + ClientApp.
 2. Wire DI, EF Core, SQL Server, Identity, and base auditing infrastructure.
-3. Implement customer module with secure sensitive-data handling and search.
-4. Implement program/program option/departure/departure option price.
-5. Implement pricing-rule and loyalty-discount modules.
-6. Implement booking snapshot flow:
+3. Implement `Customers` vertical slice with secure sensitive-data handling and search.
+4. Implement `Programs` and `Departures` vertical slices (program, options, departure, departure option pricing).
+5. Implement pricing-rule and loyalty-discount logic as part of `Bookings` prerequisites.
+6. Implement `Bookings` vertical slice snapshot flow:
    - booking root
    - booking options
    - booking travel legs
    - booking items
-7. Implement payment milestones and payments.
-8. Implement document metadata, storage abstraction, and document access logging.
+7. Implement `Payments` vertical slice (payment milestones and actual payments).
+8. Implement `Documents` vertical slice (metadata, storage abstraction, access logging).
 9. Add role-based admin capabilities and audit visibility.
 10. Harden production config, retention, backup, and operational checks.
 

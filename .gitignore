@@ -11,6 +11,9 @@ obj/
 *.sln.docstates
 *.cursorrules
 DeleteBinObjFolders.bat
+TheSimplePlan.md
+ThePlan.md
+AI_Summary.md
 
 # User-specific folders
 Info/

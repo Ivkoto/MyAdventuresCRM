@@ -1,27 +1,22 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <SpaRoot>..\cedadventurecrm.client</SpaRoot>
+    <SpaRoot>..\CedAdventureCRM.Client</SpaRoot>
     <SpaProxyLaunchCommand>npm run dev</SpaProxyLaunchCommand>
     <SpaProxyServerUrl>https://localhost:54479</SpaProxyServerUrl>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.3" />
-    <PackageReference Include="Microsoft.AspNetCore.SpaProxy">
-      <Version>10.*-*</Version>
-    </PackageReference>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.5" />
+    <PackageReference Include="Microsoft.AspNetCore.SpaProxy" Version="10.0.5" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\CedAdventureCRM.Application\CedAdventureCRM.Application.csproj" />
-    <ProjectReference Include="..\..\CedAdventureCRM.Domain\CedAdventureCRM.Domain.csproj" />
-    <ProjectReference Include="..\cedadventurecrm.client\cedadventurecrm.client.esproj">
-      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
-    </ProjectReference>
+    <ProjectReference Include="..\CedAdventureCRM.Client\CedAdventureCRM.Client.esproj" />
+    <ProjectReference Include="..\CedAdventureCRM.Core\CedAdventureCRM.Core.csproj" />
   </ItemGroup>
 
 </Project>
