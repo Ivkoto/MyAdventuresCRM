@@ -1,8 +1,0 @@
-<Solution>
-  <Project Path="CedAdventureCRM.Client/CedAdventureCRM.Client.esproj">
-    <Build />
-    <Deploy />
-  </Project>
-  <Project Path="CedAdventureCRM.Core/CedAdventureCRM.Core.csproj" />
-  <Project Path="CedAdventureCRM.Server/CedAdventureCRM.Server.csproj" />
-</Solution>

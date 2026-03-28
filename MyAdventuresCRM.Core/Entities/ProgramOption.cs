@@ -1,4 +1,4 @@
-﻿namespace CedAdventureCRM.Core.Entities;
+﻿namespace MyAdventuresCRM.Core.Entities;
 
 internal class ProgramOption
 {

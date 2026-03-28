@@ -1,4 +1,4 @@
-﻿namespace CedAdventureCRM.Core.Enums;
+﻿namespace MyAdventuresCRM.Core.Enums;
 
 internal enum Currency
 {

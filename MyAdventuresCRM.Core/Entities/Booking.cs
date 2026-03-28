@@ -1,6 +1,6 @@
-﻿using CedAdventureCRM.Core.Enums;
+﻿using MyAdventuresCRM.Core.Enums;
 
-namespace CedAdventureCRM.Core.Entities;
+namespace MyAdventuresCRM.Core.Entities;
 
 internal class Booking
 {

@@ -1,0 +1,6 @@
+@MyAdventuresCRM.Server_HostAddress = http://localhost:5245
+
+GET {{MyAdventuresCRM.Server_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

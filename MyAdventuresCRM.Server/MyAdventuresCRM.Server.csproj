@@ -4,7 +4,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <SpaRoot>..\CedAdventureCRM.Client</SpaRoot>
+    <SpaRoot>..\MyAdventuresCRM.Client</SpaRoot>
     <SpaProxyLaunchCommand>npm run dev</SpaProxyLaunchCommand>
     <SpaProxyServerUrl>https://localhost:54479</SpaProxyServerUrl>
   </PropertyGroup>
@@ -15,8 +15,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\CedAdventureCRM.Client\CedAdventureCRM.Client.esproj" />
-    <ProjectReference Include="..\CedAdventureCRM.Core\CedAdventureCRM.Core.csproj" />
+    <ProjectReference Include="..\MyAdventuresCRM.Client\MyAdventuresCRM.Client.esproj" />
+    <ProjectReference Include="..\MyAdventuresCRM.Core\MyAdventuresCRM.Core.csproj" />
   </ItemGroup>
 
 </Project>

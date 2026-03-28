@@ -1,0 +1,8 @@
+<Solution>
+  <Project Path="MyAdventuresCRM.Client/MyAdventuresCRM.Client.esproj">
+    <Build />
+    <Deploy />
+  </Project>
+  <Project Path="MyAdventuresCRM.Core/MyAdventuresCRM.Core.csproj" />
+  <Project Path="MyAdventuresCRM.Server/MyAdventuresCRM.Server.csproj" />
+</Solution>
