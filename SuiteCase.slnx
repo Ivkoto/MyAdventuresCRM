@@ -1,0 +1,8 @@
+<Solution>
+  <Project Path="SuiteCase.Client/SuiteCase.Client.esproj">
+    <Build />
+    <Deploy />
+  </Project>
+  <Project Path="SuiteCase.Core/SuiteCase.Core.csproj" />
+  <Project Path="SuiteCase.Server/SuiteCase.Server.csproj" />
+</Solution>
