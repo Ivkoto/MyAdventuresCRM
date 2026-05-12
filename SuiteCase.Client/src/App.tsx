@@ -9,7 +9,7 @@ function App() {
                 title="SuiteCase Logo"
                 alt="SuiteCase logo"
             />
-            <h1 id="tableLabel">The SuiteCase CRM</h1>
+            <h1 id="tableLabel">SuiteCase</h1>
             <p>This is the development progress test page.</p>
         </div>
     );

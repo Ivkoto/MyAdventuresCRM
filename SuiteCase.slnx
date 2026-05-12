@@ -4,5 +4,7 @@
     <Deploy />
   </Project>
   <Project Path="SuiteCase.Core/SuiteCase.Core.csproj" />
+  <Project Path="SuiteCase.IntegrationTests/SuiteCase.IntegrationTests.csproj" />
   <Project Path="SuiteCase.Server/SuiteCase.Server.csproj" />
+  <Project Path="SuiteCase.UnitTests/SuiteCase.UnitTests.csproj" Id="b21aaba8-13e0-4d5c-a468-403a2a7697f7" />
 </Solution>
