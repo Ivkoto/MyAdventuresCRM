@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using SuiteCase.Core.Security;
 using SuiteCase.Server.Data;
@@ -98,7 +99,15 @@ public static class CustomerEndpoints
         customer.SetPassportNumber(passportNumber is null ? null : dataProtector.Protect(passportNumber), passportNumberHash);
 
         db.Customers.Add(customer);
-        await db.SaveChangesAsync(ct);
+
+        try
+        {
+            await db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException ex) when(IsUniqueConstraintViolation(ex))
+        {
+            return TypedResults.Conflict("A customer with the same national ID or passport number already exists.");
+        }        
 
         return TypedResults.CreatedAtRoute(
             customer.ToCustomerDetailsResponse(dataProtector),
@@ -138,7 +147,14 @@ public static class CustomerEndpoints
 
         currentCustomer.UpdateFrom(request, DateTime.UtcNow);
 
-        await db.SaveChangesAsync(ct);
+        try
+        {
+            await db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException ex) when (IsUniqueConstraintViolation(ex))
+        {
+            return TypedResults.Conflict("A customer with the same national ID or passport number already exists.");
+        }        
 
         return TypedResults.Ok(currentCustomer.ToCustomerDetailsResponse(dataProtector));
     }
@@ -157,9 +173,11 @@ public static class CustomerEndpoints
     }
 
     private static string? NormalizeSensitiveValue(string? value)
-    {
-        return string.IsNullOrWhiteSpace(value)
-            ? null
-            : value.Trim().ToUpperInvariant();
-    }
+        => string.IsNullOrWhiteSpace(value) ? null : value.Trim().ToUpperInvariant();
+
+    private static bool IsUniqueConstraintViolation(DbUpdateException exception)
+        => exception.InnerException is SqlException sqlException && (sqlException.Number == 2601 || sqlException.Number == 2627);
+    //2601 -> duplicate key row with unique index
+    //2627 -> violation of unique constraint / primary key
+
 }
