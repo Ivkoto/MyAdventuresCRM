@@ -2,8 +2,6 @@
 
 SuiteCase is a staff-facing CRM for travel agencies, focused on customers, departures, bookings, payments, and documents.
 
-> Naming note: the repository/projects currently still use `SuiteCase` in technical names and namespaces. Product name is now **SuiteCase**.
-
 ## Why This Project
 Travel agencies often operate with spreadsheets and disconnected tools.
 SuiteCase is designed to centralize daily operations into one clear workflow with production-oriented architecture decisions.
@@ -12,6 +10,9 @@ SuiteCase is designed to centralize daily operations into one clear workflow wit
 
 SuiteCase is not designed as a generic sales CRM with leads and deal pipelines.
 It is designed as a **travel agency operations CRM** focused on executing trips correctly, not just selling them.
+
+Most CRM systems expect the company to adapt its work around the product, even when the product offers flexible modules and configuration.
+SuiteCase is designed the other way around: it wraps around the agency's established working strategy, supports the existing operational flow, and then makes that flow easier, more consistent, and more automated.
 
 ### Core Differentiators
 
@@ -24,16 +25,17 @@ It is designed as a **travel agency operations CRM** focused on executing trips 
 - Payment-pressure visibility:
   - Payment milestones and alerts support proactive follow-up before departures.
 - Built for controlled flexibility:
-  - The system is being designed to support agency-specific rules and settings without turning into one-off chaos.
+  - Agency-specific rules and habits are treated as part of the product model, not as awkward workarounds around a generic CRM.
 
 ### Product Vision
 
-SuiteCase starts as a focused solution for real agency workflows and evolves toward a reusable B2B/SaaS product.
+SuiteCase starts as a focused solution for real agency workflows.
 The goal is not “another CRM,” but a **back-office operating system for travel agencies**.
 
 ## Current Status
-Early-stage demo/prototype.
-The UI and domain flow are actively shaped, but this is not production-ready yet.
+Early-stage product build.
+
+The first backend slice is in place for Customer management, including EF Core persistence, SQL Server migrations, OpenAPI support, and initial automated tests. The UI and broader domain flow are still actively shaped, and the system is not production-ready yet.
 
 ## Scope (Phase 1)
 - Customer directory and customer detail workflows
@@ -43,22 +45,105 @@ The UI and domain flow are actively shaped, but this is not production-ready yet
 - Document workflow placeholders
 
 ## Architecture Direction
-- Current: `Client + Server + Core` (pragmatic start)
+- Current: `Client + Server + Core` with vertical/feature-based slices inside the Server project
 - Goal: evolve safely to full Clean Architecture only when complexity requires it
-- Delivery approach: single-agency runtime now, tenant-ready foundations for future SaaS
+- Delivery approach: single-agency runtime focused on the current agency workflow
 
 ## Tech Stack
 - React + TypeScript + Vite
 - ASP.NET Core
-- SQL Server (planned operational DB)
+- SQL Server
 
-## What Is Implemented So Far
-- Presentation-grade CRM UI flows
-- Demo data model for customers/programs/departures/bookings
-- Booking and customer detail screens with iterative UX refinements
+## Development
+### Branch Strategy
+Use short-lived branches from `main`.
 
-## Screenshots (WIP)
-Current UI screenshots are being curated and will be added in this section.
+```text
+feature/  - New behavior or user-visible capability
+fix/      - A normal bug fix
+test/     - Only test-related work, or mostly test infrastructure
+docs/     - Documentation only
+chore/    - Maintenance work that is not a feature, bug fix, test, docs, or refactor
+refactor/ - Code structure changes without changing behavior
+codex/    - Prefix for branches created by Codex, combined with the normal branch type when useful
+```
+
+Examples:
+
+```text
+feature/customer-minimal-api
+feature/customer-search
+feature/audit-events
+
+fix/customer-soft-delete-recreate
+fix/swagger-openapi-route
+fix/passport-duplicate-check
+
+test/customer-integration-tests
+test/sqlserver-testcontainers
+
+docs/versioning-strategy
+docs/deployment-stages
+
+chore/update-nuget-packages
+chore/remove-unused-package
+chore/clean-gitignore
+chore/configure-dotnet-tools
+
+refactor/extract-customer-normalization
+refactor/customer-endpoint-handlers
+
+codex/feature/customer-minimal-api
+codex/fix/customer-soft-delete-recreate
+codex/test/customer-integration-tests
+```
+
+If behavior changes, the branch is not only a refactor. Use `feature/` or `fix/` instead.
+
+### Version Strategy
+Use Semantic Versioning:
+
+```text
+MAJOR.MINOR.PATCH
+```
+
+Examples:
+
+```text
+v0.1.0
+v0.2.0
+v1.0.0
+v1.0.1
+v1.1.0
+v2.0.0
+```
+
+Rules:
+
+```text
+PATCH: bug fix only
+MINOR: new backward-compatible feature
+MAJOR: breaking API, behavior, database/schema, or import/export change
+```
+
+Examples:
+
+```text
+v1.0.1 -> bug fix
+v1.1.0 -> new backward-compatible feature
+v2.0.0 -> breaking API/schema behavior
+```
+
+Use pre-release versions only when hosting a test version for agents or company users to validate functionality or behavior before marking it stable.
+
+```text
+v0.1.0-beta.1
+v1.0.0-rc.1
+```
+
+Prefer `v0.12.1`, not `v0.12.01`.
+
+Do not change the version on every PR. Create a version tag only when `main` reaches a meaningful checkpoint.
 
 ## Run Locally
 ### Prerequisites
@@ -92,10 +177,6 @@ Notes:
 ## License
 This project is proprietary software. All rights reserved.
 
-Public access to this repository does not grant permission to use, copy, modify, distribute, or reuse any part of the software without prior written consent from the copyright holder.
+See [LICENSE.md](LICENSE.md) for the full license terms.
 
 Copyright (c) 2026 Ivaylo Kostov. All rights reserved.
-
-
-
-
