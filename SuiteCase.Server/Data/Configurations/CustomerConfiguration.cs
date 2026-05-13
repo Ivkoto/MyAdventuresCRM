@@ -55,7 +55,7 @@ public sealed class CustomerConfiguration : IEntityTypeConfiguration<Customer>
 
         builder.HasQueryFilter(c => c.DeletedAt == null);
 
-        //TODO: Check with the team what are the most used properties for searching a custome and correct indeces if needed.
+        //TODO: Check with the team what are the most used properties for searching a customer and correct indeces if needed.
         builder.HasIndex(c => new {c.FirstName, c.LastName});
         builder.HasIndex(c => c.PhoneNumber);
         builder.HasIndex(c => c.Email);
