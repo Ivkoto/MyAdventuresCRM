@@ -1,6 +1,6 @@
 Copyright (c) 2026 Ivaylo Kostov. All rights reserved.
 
-This software and all related source code, assets, documentation, and materials contained in this repository are the exclusive property of Ivo Kostov.
+This software and all related source code, assets, documentation, and materials contained in this repository are the exclusive property of Ivaylo Kostov.
 
 No permission is granted to use, copy, reproduce, modify, merge, publish, distribute, sublicense, sell, host, lease, transfer, or otherwise exploit this software, in whole or in part, for any personal, commercial, internal, or external purpose, without prior explicit written permission from the copyright holder.
 
