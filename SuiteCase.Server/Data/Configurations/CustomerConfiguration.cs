@@ -36,7 +36,7 @@ public sealed class CustomerConfiguration : IEntityTypeConfiguration<Customer>
             .HasMaxLength(254);
 
         builder.Property(c => c.PhoneNumber)
-            .HasMaxLength(15);
+            .HasMaxLength(20);
 
         builder.Property(c => c.ResidenceCountry)
             .HasMaxLength(50);
@@ -52,6 +52,13 @@ public sealed class CustomerConfiguration : IEntityTypeConfiguration<Customer>
 
         builder.Property(c => c.PassportNumberHash)
             .HasMaxLength(128);
+
+        builder.Property(c => c.Notes)
+            .HasColumnType("nvarchar(max)");
+
+         builder.Property(c => c.CreatedAt).IsRequired();
+         builder.Property(c => c.UpdatedAt);
+         builder.Property(c => c.DeletedAt);
 
         builder.HasQueryFilter(c => c.DeletedAt == null);
 

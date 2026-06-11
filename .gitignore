@@ -11,13 +11,10 @@ obj/
 *.sln.docstates
 *.cursorrules
 DeleteBinObjFolders.bat
-TheSimplePlan.md
-ThePlan.md
-AI_HANDOFF.md
-TheExecutionPlan.md
 
 # User-specific folders
 Info/
+docs/
 
 # VS Code
 .vscode/

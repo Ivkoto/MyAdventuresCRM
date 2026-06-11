@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using SuiteCase.Server.Data;
 
@@ -11,9 +12,11 @@ using SuiteCase.Server.Data;
 namespace SuiteCase.Server.Data.Migrations
 {
     [DbContext(typeof(SuiteCaseDbContext))]
-    partial class SuiteCaseDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260611063046_AuditDateTimeNulablePhone20")]
+    partial class AuditDateTimeNulablePhone20
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

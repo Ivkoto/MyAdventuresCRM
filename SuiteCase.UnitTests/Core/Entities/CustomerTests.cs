@@ -20,8 +20,8 @@ public sealed class CustomerTests
     public void SoftDelete_DoesNotOverwriteDeletedAt_WhenAlreadyDeleted()
     {
         var customer = CreateCustomer();
-        var firstDeletedAt = DateTime.Now.AddDays(-1);
-        var secondDeletedAt = DateTime.Now;
+        var firstDeletedAt = DateTime.UtcNow.AddDays(-1);
+        var secondDeletedAt = DateTime.UtcNow;
 
         customer.SoftDelete(firstDeletedAt);
         customer.SoftDelete(secondDeletedAt);

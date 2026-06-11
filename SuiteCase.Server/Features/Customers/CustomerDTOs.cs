@@ -63,7 +63,7 @@ public sealed record CreateCustomerRequest(
     [EmailAddress, MaxLength(254)]
     string? Email,
 
-    [MaxLength(15)]
+    [MaxLength(20)]
     string? PhoneNumber,
 
     [MaxLength(50)]
@@ -104,7 +104,7 @@ public sealed record UpdateCustomerRequest(
     [EmailAddress, MaxLength(254)]
     string? Email,
 
-    [MaxLength(15)]
+    [MaxLength(20)]
     string? PhoneNumber,
 
     [MaxLength(50)]
