@@ -13,23 +13,4 @@ public sealed class SuiteCaseDbContext(DbContextOptions<SuiteCaseDbContext> opti
 
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(SuiteCaseDbContext).Assembly);
     }
-
-    public override Task<int> SaveChangesAsync(CancellationToken ct = default)
-    {
-        var now = DateTime.UtcNow;
-
-        foreach (var customer in ChangeTracker.Entries<Customer>())
-        {
-            if (customer.State == EntityState.Added)
-            {
-                customer.Entity.CreatedAt = now;
-            }
-            if (customer.State == EntityState.Modified)
-            {
-                customer.Entity.UpdatedAt = now;
-            }
-        }
-
-        return base.SaveChangesAsync(ct);
-    }
 }
