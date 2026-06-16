@@ -1,6 +1,6 @@
 ﻿namespace SuiteCase.Core.Enums;
 
-internal enum ParticipantType
+public enum ParticipantType
 {
     Unknown = 0,
     Adult = 1,

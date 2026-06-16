@@ -8,7 +8,7 @@ public sealed class CustomerTests
     public void SoftDeleted_SetSuccessfully()
     {
         var customer = CreateCustomer();
-        var deletedAt = DateTime.UtcNow;
+        var deletedAt = DateTimeOffset.UtcNow;
         
         customer.SoftDelete(deletedAt);
 
@@ -20,8 +20,8 @@ public sealed class CustomerTests
     public void SoftDelete_DoesNotOverwriteDeletedAt_WhenAlreadyDeleted()
     {
         var customer = CreateCustomer();
-        var firstDeletedAt = DateTime.UtcNow.AddDays(-1);
-        var secondDeletedAt = DateTime.UtcNow;
+        var firstDeletedAt = DateTimeOffset.UtcNow.AddDays(-1);
+        var secondDeletedAt = DateTimeOffset.UtcNow;
 
         customer.SoftDelete(firstDeletedAt);
         customer.SoftDelete(secondDeletedAt);
@@ -31,5 +31,5 @@ public sealed class CustomerTests
     }
 
     private static Customer CreateCustomer()
-        => new() { FirstName = "Ivan", LastName = "Petrov", CreatedAt = DateTime.UtcNow.AddDays(-5)};
+        => new() { FirstName = "Ivan", LastName = "Petrov", CreatedAt = DateTimeOffset.UtcNow.AddDays(-5) };
 }
