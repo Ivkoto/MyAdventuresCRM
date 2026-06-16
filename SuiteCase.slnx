@@ -1,17 +1,4 @@
-<Solution>
-  <Folder Name="/Solution Items/">
-    <File Path=".gitignore" />
-    <File Path="LICENSE.md" />
-    <File Path="README.md" />
-  </Folder>
-  <Folder Name="/docs/">
-    <File Path="docs/AI_HANDOFF.md" />
-    <File Path="docs/Audit.md" />
-    <File Path="docs/DatabaseImplementationPlan.md" />
-    <File Path="docs/ErrorHandling.md" />
-    <File Path="docs/ThePlan.md" />
-    <File Path="docs/TheSimplePlan.md" />
-  </Folder>
+<Solution>  
   <Project Path="SuiteCase.Client/SuiteCase.Client.esproj">
     <Build />
     <Deploy />
