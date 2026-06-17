@@ -11,8 +11,13 @@ namespace SuiteCase.Server.Data.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropIndex(name: "IX_Customers_NationalIdHash", table: "Customers");
-            migrationBuilder.DropIndex(name: "IX_Customers_PassportNumberHash", table: "Customers");
+            migrationBuilder.DropIndex(
+                name: "IX_Customers_NationalIdHash",
+                table: "Customers");
+
+            migrationBuilder.DropIndex(
+                name: "IX_Customers_PassportNumberHash",
+                table: "Customers");
 
             migrationBuilder.AlterColumn<DateTimeOffset>(
                 name: "UpdatedAt",
@@ -39,13 +44,32 @@ namespace SuiteCase.Server.Data.Migrations
                 nullable: false,
                 oldClrType: typeof(DateTime),
                 oldType: "datetime2");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Customers_NationalIdHash",
+                table: "Customers",
+                column: "NationalIdHash",
+                unique: true,
+                filter: "[NationalIdHash] IS NOT NULL AND [DeletedAt] IS NULL");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Customers_PassportNumberHash",
+                table: "Customers",
+                column: "PassportNumberHash",
+                unique: true,
+                filter: "[PassportNumberHash] IS NOT NULL AND [DeletedAt] IS NULL");
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropIndex(name: "IX_Customers_NationalIdHash", table: "Customers");
-            migrationBuilder.DropIndex(name: "IX_Customers_PassportNumberHash", table: "Customers");
+            migrationBuilder.DropIndex(
+                name: "IX_Customers_NationalIdHash",
+                table: "Customers");
+
+            migrationBuilder.DropIndex(
+                name: "IX_Customers_PassportNumberHash",
+                table: "Customers");
 
             migrationBuilder.AlterColumn<DateTime>(
                 name: "UpdatedAt",
@@ -72,6 +96,20 @@ namespace SuiteCase.Server.Data.Migrations
                 nullable: false,
                 oldClrType: typeof(DateTimeOffset),
                 oldType: "datetimeoffset");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Customers_NationalIdHash",
+                table: "Customers",
+                column: "NationalIdHash",
+                unique: true,
+                filter: "[NationalIdHash] IS NOT NULL AND [DeletedAt] IS NULL");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Customers_PassportNumberHash",
+                table: "Customers",
+                column: "PassportNumberHash",
+                unique: true,
+                filter: "[PassportNumberHash] IS NOT NULL AND [DeletedAt] IS NULL");
         }
     }
 }

@@ -14,6 +14,9 @@ public sealed class GroupConfiguration : IEntityTypeConfiguration<Group>
 
         builder.HasKey(g => g.Id);
 
+        // Alternate key used by composite FKs to enforce same-ProgramId integrity
+        builder.HasAlternateKey(g => new { g.Id, g.ProgramId });
+
         builder.Property(g => g.Name)
             .HasMaxLength(200)
             .IsRequired();
@@ -48,10 +51,12 @@ public sealed class GroupConfiguration : IEntityTypeConfiguration<Group>
             .HasForeignKey(g => g.ProgramId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        // Self-reference: parent/children
-        builder.HasMany<Group>()
-            .WithOne()
-            .HasForeignKey(g => g.ParentGroupId)
+        // Self-reference: child { ParentGroupId, ProgramId } -> parent { Id, ProgramId }
+        // Enforces that a child group can only point to a parent with the same ProgramId.
+        builder.HasOne<Group>()
+            .WithMany()
+            .HasForeignKey(g => new { g.ParentGroupId, g.ProgramId })
+            .HasPrincipalKey(g => new { g.Id, g.ProgramId })
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(g => g.ProgramId);

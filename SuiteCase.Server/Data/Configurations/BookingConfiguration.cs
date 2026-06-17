@@ -4,8 +4,6 @@ using SuiteCase.Core.Entities;
 
 namespace SuiteCase.Server.Data.Configurations;
 
-using Program = SuiteCase.Core.Entities.Program;
-
 public sealed class BookingConfiguration : IEntityTypeConfiguration<Booking>
 {
     public void Configure(EntityTypeBuilder<Booking> builder)
@@ -51,14 +49,12 @@ public sealed class BookingConfiguration : IEntityTypeConfiguration<Booking>
             .HasForeignKey(b => b.CustomerId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasOne<Program>()
-            .WithMany()
-            .HasForeignKey(b => b.ProgramId)
-            .OnDelete(DeleteBehavior.Restrict);
-
+        // Composite FK: Booking { GroupId, ProgramId } -> Group { Id, ProgramId }
+        // Enforces that the selected Group belongs to the same ProgramId stored on Booking.
         builder.HasOne<Group>()
             .WithMany()
-            .HasForeignKey(b => b.GroupId)
+            .HasForeignKey(b => new { b.GroupId, b.ProgramId })
+            .HasPrincipalKey(b => new { b.Id, b.ProgramId })
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne<LoyaltyDiscountRule>()
