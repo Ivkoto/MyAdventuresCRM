@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using SuiteCase.Server.Data;
 
@@ -11,9 +12,11 @@ using SuiteCase.Server.Data;
 namespace SuiteCase.Server.Data.Migrations
 {
     [DbContext(typeof(SuiteCaseDbContext))]
-    partial class SuiteCaseDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260616231903_Customer-Fixes")]
+    partial class CustomerFixes
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -122,8 +125,6 @@ namespace SuiteCase.Server.Data.Migrations
                     b.HasIndex("ProgramId");
 
                     b.HasIndex("Status");
-
-                    b.HasIndex("GroupId", "ProgramId");
 
                     b.ToTable("Bookings", (string)null);
                 });
@@ -495,8 +496,6 @@ namespace SuiteCase.Server.Data.Migrations
                     b.HasIndex("ParentGroupId");
 
                     b.HasIndex("ProgramId");
-
-                    b.HasIndex("ParentGroupId", "ProgramId");
 
                     b.HasIndex("ProgramId", "Name");
 
@@ -1020,8 +1019,13 @@ namespace SuiteCase.Server.Data.Migrations
 
                     b.HasOne("SuiteCase.Core.Entities.Group", null)
                         .WithMany()
-                        .HasForeignKey("GroupId", "ProgramId")
-                        .HasPrincipalKey("Id", "ProgramId")
+                        .HasForeignKey("GroupId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SuiteCase.Core.Entities.Program", null)
+                        .WithMany()
+                        .HasForeignKey("ProgramId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
@@ -1081,17 +1085,16 @@ namespace SuiteCase.Server.Data.Migrations
 
             modelBuilder.Entity("SuiteCase.Core.Entities.Group", b =>
                 {
+                    b.HasOne("SuiteCase.Core.Entities.Group", null)
+                        .WithMany()
+                        .HasForeignKey("ParentGroupId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("SuiteCase.Core.Entities.Program", null)
                         .WithMany()
                         .HasForeignKey("ProgramId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
-
-                    b.HasOne("SuiteCase.Core.Entities.Group", null)
-                        .WithMany()
-                        .HasForeignKey("ParentGroupId", "ProgramId")
-                        .HasPrincipalKey("Id", "ProgramId")
-                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("SuiteCase.Core.Entities.GroupOption", b =>

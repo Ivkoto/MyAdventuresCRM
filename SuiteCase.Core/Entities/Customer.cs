@@ -22,15 +22,13 @@ public class Customer
     public string? ResidenceCountry { get; set; }
     public string? Notes { get; set; }
 
-    //TODO: Is it a good idea to use DateTimeOffset here because of the timezone
-    //or not because all the travel destinations are around the world.
-    public DateTime CreatedAt { get; set; }
-    public DateTime? UpdatedAt { get; set; }
-    public DateTime? DeletedAt { get; private set; }
+    public DateTimeOffset CreatedAt { get; set; }
+    public DateTimeOffset? UpdatedAt { get; set; }
+    public DateTimeOffset? DeletedAt { get; private set; }
 
     public bool IsDeleted => DeletedAt is not null;
 
-    public void SoftDelete (DateTime deletedAt)
+    public void SoftDelete(DateTimeOffset deletedAt)
     {
         if (DeletedAt is not null) return;
 

@@ -5,15 +5,27 @@ using SuiteCase.Core.Security;
 
 namespace SuiteCase.Server.Security;
 
-/*
- * ASP.NET Core Data Protection: https://learn.microsoft.com/en-us/aspnet/core/security/data-protection/introduction?view=aspnetcore-10.0
- * Configure ASP.NET Core Data Protection: https://learn.microsoft.com/en-us/aspnet/core/security/data-protection/configuration/overview?view=aspnetcore-10.0
- */
+/// <inheritdoc cref="ISensitiveDataProtector"/>
+/// <remarks>
+/// Uses ASP.NET Core Data Protection for reversible encryption and keyed HMAC-SHA256 for hashing.
+/// <list type="bullet">
+///   <item><description>ASP.NET Core Data Protection: https://learn.microsoft.com/en-us/aspnet/core/security/data-protection/introduction</description></item>
+///   <item><description>Configure ASP.NET Core Data Protection: https://learn.microsoft.com/en-us/aspnet/core/security/data-protection/configuration/overview</description></item>
+/// </list>
+/// </remarks>
 public sealed class SensitiveDataProtector : ISensitiveDataProtector
 {
     private readonly IDataProtector _protector;
     private readonly byte[] _hashKey;
 
+    /// <summary>
+    /// Initializes a new instance of <see cref="SensitiveDataProtector"/>.
+    /// </summary>
+    /// <param name="dataProtectionProvider">The ASP.NET Core Data Protection provider used for reversible encryption.</param>
+    /// <param name="configuration">Application configuration; must contain <c>Security:SensitiveDataHashKey</c>.</param>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when <c>Security:SensitiveDataHashKey</c> is missing, not valid Base64, or shorter than 32 bytes.
+    /// </exception>
     public SensitiveDataProtector(IDataProtectionProvider dataProtectionProvider, IConfiguration configuration)
     {
         _protector = dataProtectionProvider.CreateProtector("SuiteCase.CustomerSensitiveData.v1");
@@ -44,10 +56,13 @@ public sealed class SensitiveDataProtector : ISensitiveDataProtector
         }
     }
 
+    /// <inheritdoc/>
     public string Protect(string value) => _protector.Protect(value);
 
+    /// <inheritdoc/>
     public string Unprotect(string protectedValue) => _protector.Unprotect(protectedValue);
 
+    /// <inheritdoc/>
     public string Hash(string value)
     {
         var normalized = value.Trim().ToUpperInvariant();

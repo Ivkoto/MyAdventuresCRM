@@ -1,4 +1,4 @@
-<Solution>
+<Solution>  
   <Project Path="SuiteCase.Client/SuiteCase.Client.esproj">
     <Build />
     <Deploy />

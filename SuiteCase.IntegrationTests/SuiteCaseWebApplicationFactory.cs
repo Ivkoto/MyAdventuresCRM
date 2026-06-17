@@ -43,7 +43,7 @@ internal sealed class SuiteCaseWebApplicationFactory : WebApplicationFactory<Pro
             using var serviceProvider = services.BuildServiceProvider();
             using var scope = serviceProvider.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<SuiteCaseDbContext>();
-            db.Database.Migrate();
+            db.Database.EnsureCreated();
         });
     }
 }

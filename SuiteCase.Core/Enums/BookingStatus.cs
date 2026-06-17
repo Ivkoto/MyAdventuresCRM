@@ -1,10 +1,9 @@
 ﻿namespace SuiteCase.Core.Enums;
 
-internal enum BookingStatus
+public enum BookingStatus
 {
-    Unknown = 0,
-    Reserved = 1,
-    PartiallyPaid = 2,
-    Paid = 3,
-    Cancelled = 4
+    Reserved = 0,
+    PartiallyPaid = 1,
+    Paid = 2,
+    Cancelled = 3
 }

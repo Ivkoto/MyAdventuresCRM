@@ -1,4 +1,5 @@
 ﻿using SuiteCase.Core.Entities;
+using SuiteCase.Core.Helpers;
 using SuiteCase.Core.Security;
 
 namespace SuiteCase.Server.Features.Customers;
@@ -24,7 +25,7 @@ public static class CustomerMapping
             customer.Notes
         );
 
-    public static Customer ToCustomer(this CreateCustomerRequest request, DateTime createdAt)
+    public static Customer ToCustomer(this CreateCustomerRequest request, DateTimeOffset createdAt, string? rawNationalId)
         => new()
         {
             FirstName = request.FirstName.Trim(),
@@ -33,7 +34,7 @@ public static class CustomerMapping
             FirstNameLatin = NormalizeOptionalText(request.FirstNameLatin),
             MiddleNameLatin = NormalizeOptionalText(request.MiddleNameLatin),
             LastNameLatin = NormalizeOptionalText(request.LastNameLatin),
-            DateOfBirth = request.DateOfBirth,
+            DateOfBirth = request.DateOfBirth ?? EgnHelper.TryExtractDateOfBirth(rawNationalId),
             PassportExpiresOn = request.PassportExpiresOn,
             Email = NormalizeOptionalText(request.Email),
             PhoneNumber = NormalizeOptionalText(request.PhoneNumber),
@@ -42,7 +43,7 @@ public static class CustomerMapping
             CreatedAt = createdAt
         };
 
-    public static void UpdateFrom(this Customer customer, UpdateCustomerRequest request, DateTime updatedAt)
+    public static void UpdateFrom(this Customer customer, UpdateCustomerRequest request, DateTimeOffset updatedAt, string? rawNationalId)
     {
         customer.FirstName = request.FirstName.Trim();
         customer.MiddleName = NormalizeOptionalText(request.MiddleName);
@@ -50,7 +51,7 @@ public static class CustomerMapping
         customer.FirstNameLatin = NormalizeOptionalText(request.FirstNameLatin);
         customer.MiddleNameLatin = NormalizeOptionalText(request.MiddleNameLatin);
         customer.LastNameLatin = NormalizeOptionalText(request.LastNameLatin);
-        customer.DateOfBirth = request.DateOfBirth;
+        customer.DateOfBirth = request.DateOfBirth ?? EgnHelper.TryExtractDateOfBirth(rawNationalId);
         customer.PassportExpiresOn = request.PassportExpiresOn;
         customer.Email = NormalizeOptionalText(request.Email);
         customer.PhoneNumber = NormalizeOptionalText(request.PhoneNumber);
@@ -58,7 +59,6 @@ public static class CustomerMapping
         customer.Notes = NormalizeOptionalText(request.Notes);
         customer.UpdatedAt = updatedAt;
     }
-
 
     private static string? NormalizeOptionalText(string? value)
     {

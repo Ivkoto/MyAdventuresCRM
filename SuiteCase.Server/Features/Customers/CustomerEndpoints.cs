@@ -93,7 +93,7 @@ public static class CustomerEndpoints
         if (passportNumberHash is not null && await db.Customers.AnyAsync(c => c.PassportNumberHash == passportNumberHash, ct))
             return TypedResults.Conflict($"A customer with this passport number: {passportNumber} already exist.");                 
 
-        var customer = request.ToCustomer(DateTime.UtcNow);
+        var customer = request.ToCustomer(DateTimeOffset.UtcNow, nationalId);
 
         customer.SetNationalId(nationalId is null ? null : dataProtector.Protect(nationalId), nationalIdHash);
         customer.SetPassportNumber(passportNumber is null ? null : dataProtector.Protect(passportNumber), passportNumberHash);
@@ -145,7 +145,7 @@ public static class CustomerEndpoints
             currentCustomer.SetPassportNumber(passportNumber is null ? null : dataProtector.Protect(passportNumber), passportNumberHash);
         }
 
-        currentCustomer.UpdateFrom(request, DateTime.UtcNow);
+        currentCustomer.UpdateFrom(request, DateTimeOffset.UtcNow, nationalId);
 
         try
         {
@@ -166,7 +166,7 @@ public static class CustomerEndpoints
         if (currentCustomer is null)
             return TypedResults.NotFound();
 
-        currentCustomer.SoftDelete(DateTime.UtcNow);
+        currentCustomer.SoftDelete(DateTimeOffset.UtcNow);
         await db.SaveChangesAsync(ct);
 
         return TypedResults.NoContent();

@@ -1,6 +1,6 @@
 ﻿namespace SuiteCase.Core.Enums;
 
-internal enum Currency
+public enum Currency
 {
     Unknown = 0,
     EUR = 1,
