@@ -11,7 +11,7 @@ public class Booking
     public DateTime BookedOn { get; set; }
     public BookingStatus Status { get; set; }
 
-    // Snapshot values (historical truth)
+    
     public required string ProgramName { get; set; }
     public required string GroupName { get; set; }
     public DateOnly StartDate { get; set; }
@@ -21,12 +21,12 @@ public class Booking
     public decimal FinalPriceAmount { get; set; }
     public Currency Currency { get; set; } = Currency.EUR;
 
-    // Loyalty snapshot
+    
     public int? AppliedLoyaltyRuleId { get; set; }
     public string? AppliedLoyaltyRuleName { get; set; }
     public decimal AppliedLoyaltyDiscountAmount { get; set; }
 
-    // Status tracking
+    
     public TicketSentStatus TicketSentStatus { get; set; }
     public ContractStatus ContractStatus { get; set; }
     public AnnexStatus AnnexStatus { get; set; }

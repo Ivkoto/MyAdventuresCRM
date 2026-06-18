@@ -1,10 +1,16 @@
-<Solution>  
-  <Project Path="SuiteCase.Client/SuiteCase.Client.esproj">
-    <Build />
-    <Deploy />
-  </Project>
-  <Project Path="SuiteCase.Core/SuiteCase.Core.csproj" />
-  <Project Path="SuiteCase.IntegrationTests/SuiteCase.IntegrationTests.csproj" />
-  <Project Path="SuiteCase.Server/SuiteCase.Server.csproj" />
-  <Project Path="SuiteCase.UnitTests/SuiteCase.UnitTests.csproj" Id="b21aaba8-13e0-4d5c-a468-403a2a7697f7" />
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/SuiteCase.Core/SuiteCase.Core.csproj" />
+    <Project Path="src/SuiteCase.Server/SuiteCase.Server.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/SuiteCase.IntegrationTests/SuiteCase.IntegrationTests.csproj" />
+    <Project Path="tests/SuiteCase.UnitTests/SuiteCase.UnitTests.csproj" />
+  </Folder>
+  <Folder Name="/ui/">
+    <Project Path="ui/SuiteCase.Client/SuiteCase.Client.esproj">
+      <Build />
+      <Deploy />
+    </Project>
+  </Folder>
 </Solution>
