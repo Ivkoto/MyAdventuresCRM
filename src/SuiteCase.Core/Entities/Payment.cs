@@ -14,11 +14,11 @@ public class Payment
     public string? ExternalReference { get; set; }
     public string? Notes { get; set; }
 
-    public DateTime CreatedAt { get; set; }
-    public DateTime? UpdatedAt { get; set; }
-    public DateTime? DeletedAt { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+    public DateTimeOffset? UpdatedAt { get; set; }
+    public DateTimeOffset? DeletedAt { get; set; }
     public string? CreatedBy { get; set; }
-    public DateTime? ChangedAt { get; set; }
+    public DateTimeOffset? ChangedAt { get; set; }
     public string? ChangedBy { get; set; }
     public string? Reason { get; set; }
 }

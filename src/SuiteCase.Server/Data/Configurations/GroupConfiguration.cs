@@ -4,8 +4,6 @@ using SuiteCase.Core.Entities;
 
 namespace SuiteCase.Server.Data.Configurations;
 
-using Program = SuiteCase.Core.Entities.Program;
-
 public sealed class GroupConfiguration : IEntityTypeConfiguration<Group>
 {
     public void Configure(EntityTypeBuilder<Group> builder)
@@ -46,7 +44,7 @@ public sealed class GroupConfiguration : IEntityTypeConfiguration<Group>
         builder.HasQueryFilter(g => g.DeletedAt == null);
 
         // FK to Program
-        builder.HasOne<Program>()
+        builder.HasOne<TravelProgram>()
             .WithMany()
             .HasForeignKey(g => g.ProgramId)
             .OnDelete(DeleteBehavior.Restrict);

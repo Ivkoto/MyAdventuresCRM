@@ -8,10 +8,10 @@ public class BookingTravelLeg
     public int BookingId { get; set; }
     public TravelLegDirection Direction { get; set; }
     public string? Location { get; set; }
-    public DateTime? TravelDateTime { get; set; }
+    public DateTimeOffset? TravelDateTime { get; set; }
     public string? Notes { get; set; }
 
-    public DateTime CreatedAt { get; set; }
-    public DateTime? UpdatedAt { get; set; }
-    public DateTime? DeletedAt { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+    public DateTimeOffset? UpdatedAt { get; set; }
+    public DateTimeOffset? DeletedAt { get; set; }
 }

@@ -30,7 +30,7 @@ public sealed class BookingOptionConfiguration : IEntityTypeConfiguration<Bookin
             .HasForeignKey(bo => bo.BookingId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasOne<ProgramOption>()
+        builder.HasOne<TravelProgramOption>()
             .WithMany()
             .HasForeignKey(bo => bo.ProgramOptionId)
             .OnDelete(DeleteBehavior.Restrict);

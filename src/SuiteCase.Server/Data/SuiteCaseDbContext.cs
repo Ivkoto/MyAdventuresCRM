@@ -1,18 +1,17 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using SuiteCase.Core.Entities;
-using CoreProgram = SuiteCase.Core.Entities.Program;
 
 namespace SuiteCase.Server.Data;
 
 public sealed class SuiteCaseDbContext(DbContextOptions<SuiteCaseDbContext> options) : DbContext(options)
 {
     public DbSet<Customer> Customers => Set<Customer>();
-    public DbSet<CoreProgram> Programs => Set<CoreProgram>();
-    public DbSet<ProgramOption> ProgramOptions => Set<ProgramOption>();
+    public DbSet<TravelProgram> TravelPrograms => Set<TravelProgram>();
+    public DbSet<TravelProgramOption> TravelProgramOptions => Set<TravelProgramOption>();
+    public DbSet<TravelProgramPricingRule> TravelProgramPricingRules => Set<TravelProgramPricingRule>();
     public DbSet<Group> Groups => Set<Group>();
     public DbSet<GroupOption> GroupOptions => Set<GroupOption>();
     public DbSet<GroupOptionalActivity> GroupOptionalActivities => Set<GroupOptionalActivity>();
-    public DbSet<ProgramPricingRule> ProgramPricingRules => Set<ProgramPricingRule>();
     public DbSet<Booking> Bookings => Set<Booking>();
     public DbSet<BookingOption> BookingOptions => Set<BookingOption>();
     public DbSet<BookingOptionalActivity> BookingOptionalActivities => Set<BookingOptionalActivity>();

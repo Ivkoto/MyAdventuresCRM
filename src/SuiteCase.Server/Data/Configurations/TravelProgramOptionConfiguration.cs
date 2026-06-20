@@ -4,11 +4,11 @@ using SuiteCase.Core.Entities;
 
 namespace SuiteCase.Server.Data.Configurations;
 
-public sealed class ProgramOptionConfiguration : IEntityTypeConfiguration<ProgramOption>
+public sealed class TravelProgramOptionConfiguration : IEntityTypeConfiguration<TravelProgramOption>
 {
-    public void Configure(EntityTypeBuilder<ProgramOption> builder)
+    public void Configure(EntityTypeBuilder<TravelProgramOption> builder)
     {
-        builder.ToTable("ProgramOptions");
+        builder.ToTable("TravelProgramOptions");
 
         builder.HasKey(po => po.Id);
 

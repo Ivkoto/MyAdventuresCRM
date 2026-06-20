@@ -4,13 +4,11 @@ using SuiteCase.Core.Entities;
 
 namespace SuiteCase.Server.Data.Configurations;
 
-using Program = SuiteCase.Core.Entities.Program;
-
-public sealed class ProgramPricingRuleConfiguration : IEntityTypeConfiguration<ProgramPricingRule>
+public sealed class TravelProgramPricingRuleConfiguration : IEntityTypeConfiguration<TravelProgramPricingRule>
 {
-    public void Configure(EntityTypeBuilder<ProgramPricingRule> builder)
+    public void Configure(EntityTypeBuilder<TravelProgramPricingRule> builder)
     {
-        builder.ToTable("ProgramPricingRules");
+        builder.ToTable("TravelProgramPricingRules");
 
         builder.HasKey(r => r.Id);
 
@@ -33,7 +31,7 @@ public sealed class ProgramPricingRuleConfiguration : IEntityTypeConfiguration<P
 
         builder.HasQueryFilter(r => r.DeletedAt == null);
 
-        builder.HasOne<Program>()
+        builder.HasOne<TravelProgram>()
             .WithMany()
             .HasForeignKey(r => r.ProgramId)
             .OnDelete(DeleteBehavior.Restrict);

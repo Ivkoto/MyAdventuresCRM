@@ -6,8 +6,8 @@ public class LoyaltyDiscountRule
 {
     public int Id { get; set; }
     public required string Name { get; set; }
-    public DateTime EffectiveFrom { get; set; }
-    public DateTime? EffectiveTo { get; set; }
+    public DateOnly EffectiveFrom { get; set; }
+    public DateOnly? EffectiveTo { get; set; }
     public int TripCountFrom { get; set; }
     public int? TripCountTo { get; set; }
     public decimal? ProgramPriceMinAmount { get; set; }
@@ -18,7 +18,7 @@ public class LoyaltyDiscountRule
     public LoyaltyDestinationMode DestinationMode { get; set; }
     public string? Notes { get; set; }
 
-    public DateTime CreatedAt { get; set; }
-    public DateTime? UpdatedAt { get; set; }
-    public DateTime? DeletedAt { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+    public DateTimeOffset? UpdatedAt { get; set; }
+    public DateTimeOffset? DeletedAt { get; set; }
 }

@@ -8,7 +8,7 @@ public class Booking
     public int CustomerId { get; set; }
     public int ProgramId { get; set; }
     public int GroupId { get; set; }
-    public DateTime BookedOn { get; set; }
+    public DateTimeOffset BookedOn { get; set; }
     public BookingStatus Status { get; set; }
 
     
@@ -33,7 +33,7 @@ public class Booking
 
     public string? Notes { get; set; }
 
-    public DateTime CreatedAt { get; set; }
-    public DateTime? UpdatedAt { get; set; }
-    public DateTime? DeletedAt { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+    public DateTimeOffset? UpdatedAt { get; set; }
+    public DateTimeOffset? DeletedAt { get; set; }
 }

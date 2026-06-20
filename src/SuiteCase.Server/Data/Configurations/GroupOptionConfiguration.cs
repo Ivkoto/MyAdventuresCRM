@@ -29,7 +29,7 @@ public sealed class GroupOptionConfiguration : IEntityTypeConfiguration<GroupOpt
             .HasForeignKey(go => go.GroupId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasOne<ProgramOption>()
+        builder.HasOne<TravelProgramOption>()
             .WithMany()
             .HasForeignKey(go => go.ProgramOptionId)
             .OnDelete(DeleteBehavior.Restrict);

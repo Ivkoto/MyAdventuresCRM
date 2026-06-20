@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using SuiteCase.Server.Data;
 
@@ -11,9 +12,11 @@ using SuiteCase.Server.Data;
 namespace SuiteCase.Server.Data.Migrations
 {
     [DbContext(typeof(SuiteCaseDbContext))]
-    partial class SuiteCaseDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260618212816_StandardizeTimestampsToDateTimeOffset")]
+    partial class StandardizeTimestampsToDateTimeOffset
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -835,7 +838,7 @@ namespace SuiteCase.Server.Data.Migrations
                     b.ToTable("PaymentMilestones", (string)null);
                 });
 
-            modelBuilder.Entity("SuiteCase.Core.Entities.TravelProgram", b =>
+            modelBuilder.Entity("SuiteCase.Core.Entities.Program", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -887,10 +890,10 @@ namespace SuiteCase.Server.Data.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("TravelPrograms", (string)null);
+                    b.ToTable("Programs", (string)null);
                 });
 
-            modelBuilder.Entity("SuiteCase.Core.Entities.TravelProgramOption", b =>
+            modelBuilder.Entity("SuiteCase.Core.Entities.ProgramOption", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -933,10 +936,10 @@ namespace SuiteCase.Server.Data.Migrations
                         .HasDatabaseName("IX_ProgramOptions_ProgramId_Name_Unique")
                         .HasFilter("[DeletedAt] IS NULL");
 
-                    b.ToTable("TravelProgramOptions", (string)null);
+                    b.ToTable("ProgramOptions", (string)null);
                 });
 
-            modelBuilder.Entity("SuiteCase.Core.Entities.TravelProgramPricingRule", b =>
+            modelBuilder.Entity("SuiteCase.Core.Entities.ProgramPricingRule", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -1002,7 +1005,7 @@ namespace SuiteCase.Server.Data.Migrations
 
                     b.HasIndex("ProgramId", "GroupId", "Name");
 
-                    b.ToTable("TravelProgramPricingRules", (string)null);
+                    b.ToTable("ProgramPricingRules", (string)null);
                 });
 
             modelBuilder.Entity("SuiteCase.Core.Entities.Booking", b =>
@@ -1034,7 +1037,7 @@ namespace SuiteCase.Server.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("SuiteCase.Core.Entities.TravelProgramPricingRule", null)
+                    b.HasOne("SuiteCase.Core.Entities.ProgramPricingRule", null)
                         .WithMany()
                         .HasForeignKey("ProgramPricingRuleId")
                         .OnDelete(DeleteBehavior.Restrict);
@@ -1048,7 +1051,7 @@ namespace SuiteCase.Server.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("SuiteCase.Core.Entities.TravelProgramOption", null)
+                    b.HasOne("SuiteCase.Core.Entities.ProgramOption", null)
                         .WithMany()
                         .HasForeignKey("ProgramOptionId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -1081,7 +1084,7 @@ namespace SuiteCase.Server.Data.Migrations
 
             modelBuilder.Entity("SuiteCase.Core.Entities.Group", b =>
                 {
-                    b.HasOne("SuiteCase.Core.Entities.TravelProgram", null)
+                    b.HasOne("SuiteCase.Core.Entities.Program", null)
                         .WithMany()
                         .HasForeignKey("ProgramId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -1102,7 +1105,7 @@ namespace SuiteCase.Server.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("SuiteCase.Core.Entities.TravelProgramOption", null)
+                    b.HasOne("SuiteCase.Core.Entities.ProgramOption", null)
                         .WithMany()
                         .HasForeignKey("ProgramOptionId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -1145,23 +1148,23 @@ namespace SuiteCase.Server.Data.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("SuiteCase.Core.Entities.TravelProgramOption", b =>
+            modelBuilder.Entity("SuiteCase.Core.Entities.ProgramOption", b =>
                 {
-                    b.HasOne("SuiteCase.Core.Entities.TravelProgram", null)
+                    b.HasOne("SuiteCase.Core.Entities.Program", null)
                         .WithMany()
                         .HasForeignKey("ProgramId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("SuiteCase.Core.Entities.TravelProgramPricingRule", b =>
+            modelBuilder.Entity("SuiteCase.Core.Entities.ProgramPricingRule", b =>
                 {
                     b.HasOne("SuiteCase.Core.Entities.Group", null)
                         .WithMany()
                         .HasForeignKey("GroupId")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("SuiteCase.Core.Entities.TravelProgram", null)
+                    b.HasOne("SuiteCase.Core.Entities.Program", null)
                         .WithMany()
                         .HasForeignKey("ProgramId")
                         .OnDelete(DeleteBehavior.Restrict)

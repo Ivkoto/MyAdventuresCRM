@@ -11,6 +11,7 @@ obj/
 *.sln.docstates
 *.cursorrules
 DeleteBinObjFolders.bat
+AGENTS.md
 
 # User-specific folders
 Info/
