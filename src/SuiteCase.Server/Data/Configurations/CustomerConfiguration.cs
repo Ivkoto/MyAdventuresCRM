@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using SuiteCase.Core.Countries;
 using SuiteCase.Core.Entities;
 
 namespace SuiteCase.Server.Data.Configurations;
@@ -38,8 +39,10 @@ public sealed class CustomerConfiguration : IEntityTypeConfiguration<Customer>
         builder.Property(c => c.PhoneNumber)
             .HasMaxLength(20);
 
-        builder.Property(c => c.ResidenceCountry)
-            .HasMaxLength(50);
+        builder.Property(c => c.ResidenceCountryCode)
+            .HasMaxLength(2)
+            .IsRequired()
+            .HasDefaultValue(Countries.DefaultCode);
 
         builder.Property(c => c.NationalIdEncrypted)
             .HasMaxLength(512);

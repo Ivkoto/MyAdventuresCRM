@@ -38,6 +38,10 @@ packages/
 # Logs
 *.log
 
+# Test results
+**/TestResults/
+*.trx
+
 # OS generated files
 .DS_Store
 Thumbs.db

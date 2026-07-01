@@ -9,6 +9,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
+builder.Services.AddProblemDetails();
 builder.Services.AddValidation();
 
 builder.Services.AddDbContext<SuiteCaseDbContext>(options =>
@@ -23,6 +24,11 @@ builder.Services.AddDataProtection().SetApplicationName("SuiteCase");
 builder.Services.AddScoped<ISensitiveDataProtector, SensitiveDataProtector>();
 
 var app = builder.Build();
+
+if (!app.Environment.IsDevelopment())
+{
+    app.UseExceptionHandler();
+}
 
 app.UseDefaultFiles();
 app.MapStaticAssets();

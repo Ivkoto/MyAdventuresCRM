@@ -19,7 +19,7 @@ public class Customer
     public DateOnly? PassportExpiresOn { get; set; }
     public string? Email { get; set; }
     public string? PhoneNumber { get; set; }
-    public string? ResidenceCountry { get; set; }
+    public string ResidenceCountryCode { get; set; } = SuiteCase.Core.Countries.Countries.DefaultCode;
     public string? Notes { get; set; }
 
     public DateTimeOffset CreatedAt { get; set; }

@@ -1,8 +1,9 @@
 ﻿using SuiteCase.Core.Entities;
 using SuiteCase.Core.Helpers;
 using SuiteCase.Core.Security;
+using SuiteCase.Server.Features.Customers.DTO;
 
-namespace SuiteCase.Server.Features.Customers;
+namespace SuiteCase.Server.Features.Customers.Helpers;
 
 public static class CustomerMapping
 {
@@ -21,29 +22,36 @@ public static class CustomerMapping
             customer.PassportExpiresOn,
             customer.Email,
             customer.PhoneNumber,
-            customer.ResidenceCountry,
+            customer.ResidenceCountryCode,
+            SuiteCase.Core.Countries.Countries.GetName(customer.ResidenceCountryCode),
             customer.Notes
         );
 
-    public static Customer ToCustomer(this CreateCustomerRequest request, DateTimeOffset createdAt, string? rawNationalId)
+    public static Customer ToCustomer(
+        this CreateCustomerRequest request,
+        DateTimeOffset createdAt,
+        string? rawNationalId,
+        string residenceCountryCode)
         => new()
         {
             FirstName = request.FirstName.Trim(),
             MiddleName = NormalizeOptionalText(request.MiddleName),
             LastName = request.LastName.Trim(),
-            FirstNameLatin = NormalizeOptionalText(request.FirstNameLatin),
-            MiddleNameLatin = NormalizeOptionalText(request.MiddleNameLatin),
-            LastNameLatin = NormalizeOptionalText(request.LastNameLatin),
             DateOfBirth = request.DateOfBirth ?? EgnHelper.TryExtractDateOfBirth(rawNationalId),
             PassportExpiresOn = request.PassportExpiresOn,
             Email = NormalizeOptionalText(request.Email),
             PhoneNumber = NormalizeOptionalText(request.PhoneNumber),
-            ResidenceCountry = NormalizeOptionalText(request.ResidenceCountry),
+            ResidenceCountryCode = residenceCountryCode,
             Notes = NormalizeOptionalText(request.Notes),
             CreatedAt = createdAt
         };
 
-    public static void UpdateFrom(this Customer customer, UpdateCustomerRequest request, DateTimeOffset updatedAt, string? rawNationalId)
+    public static void UpdateFrom(
+        this Customer customer,
+        UpdateCustomerRequest request,
+        DateTimeOffset updatedAt,
+        string? rawNationalId,
+        string residenceCountryCode)
     {
         customer.FirstName = request.FirstName.Trim();
         customer.MiddleName = NormalizeOptionalText(request.MiddleName);
@@ -55,7 +63,7 @@ public static class CustomerMapping
         customer.PassportExpiresOn = request.PassportExpiresOn;
         customer.Email = NormalizeOptionalText(request.Email);
         customer.PhoneNumber = NormalizeOptionalText(request.PhoneNumber);
-        customer.ResidenceCountry = NormalizeOptionalText(request.ResidenceCountry);
+        customer.ResidenceCountryCode = residenceCountryCode;
         customer.Notes = NormalizeOptionalText(request.Notes);
         customer.UpdatedAt = updatedAt;
     }

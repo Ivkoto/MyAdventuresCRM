@@ -1,10 +1,19 @@
-﻿using Microsoft.AspNetCore.Http.HttpResults;
-using Microsoft.Data.SqlClient;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
+using SuiteCase.Core.Helpers;
 using SuiteCase.Core.Security;
+using SuiteCase.Server.Common.DTO;
 using SuiteCase.Server.Data;
+using SuiteCase.Server.Data.ErrorHandling;
+using SuiteCase.Server.Features.Customers.DTO;
+using SuiteCase.Server.Features.Customers.ErrorHandling;
+using SuiteCase.Server.Features.Customers.Helpers;
+using SuiteCase.Server.Features.Customers.Logging;
+using SuiteCase.Server.Security;
 
 namespace SuiteCase.Server.Features.Customers;
+
+internal sealed class CustomerEndpointLogs;
 
 public static class CustomerEndpoints
 {
@@ -19,81 +28,154 @@ public static class CustomerEndpoints
         var group = app.MapGroup("/api/customers")
             .WithTags("Customers");
 
-        group.MapGet("", GetAllCustomers)
+        group.MapGet("", GetCustomers)
             .WithName(ListCustomersEndpointName)
-            .Produces<List<CustomerListResponse>>(StatusCodes.Status200OK);
+            .Produces<PagedResponse<CustomerShortDetailsResponse>>(StatusCodes.Status200OK)
+            .ProducesValidationProblem();
 
         group.MapGet("/{id:int}", GetCustomerById)
             .WithName(GetCustomerByIdEndpointName)
             .Produces<CustomerDetailsResponse>(StatusCodes.Status200OK)
-            .Produces(StatusCodes.Status404NotFound);
+            .ProducesProblem(StatusCodes.Status404NotFound);
 
         group.MapPost("", CreateCustomer)
             .WithName(CreateCustomerEndpointName)
             .Produces<CustomerDetailsResponse>(StatusCodes.Status201Created)
-            .Produces(StatusCodes.Status409Conflict)
+            .ProducesProblem(StatusCodes.Status409Conflict)
             .ProducesValidationProblem();
 
         group.MapPut("/{id:int}", UpdateCustomer)
             .WithName(UpdateCustomerEndpointName)
             .Produces<CustomerDetailsResponse>(StatusCodes.Status200OK)
-            .Produces(StatusCodes.Status404NotFound)
-            .Produces(StatusCodes.Status409Conflict)
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .ProducesProblem(StatusCodes.Status409Conflict)
             .ProducesValidationProblem();
 
         group.MapDelete("/{id:int}", SoftDeleteCustomer)
             .WithName(SoftDeleteCustomerEndpointName)
             .Produces(StatusCodes.Status204NoContent)
-            .Produces(StatusCodes.Status404NotFound);
+            .ProducesProblem(StatusCodes.Status404NotFound);
 
         return group;
     }
 
-    private static async Task<Ok<List<CustomerListResponse>>> GetAllCustomers(SuiteCaseDbContext db, CancellationToken ct)
+    private static async Task<Ok<PagedResponse<CustomerShortDetailsResponse>>> GetCustomers(
+        [AsParameters] CustomerQueryParameters parameters,
+        SuiteCaseDbContext db,
+        ISensitiveDataProtector dataProtector,
+        CancellationToken ct)
     {
-        var customers = await db.Customers
-            .AsNoTracking()
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var query = CustomerHelper.ApplySearch(db.Customers.AsNoTracking(), parameters.Search, dataProtector);
+        var totalCount = await query.CountAsync(ct);
+
+        var customers = await query
             .OrderBy(c => c.FirstName)
             .ThenBy(c => c.LastName)
-            .Select(c => new CustomerListResponse(
+            .ThenBy(c => c.Id)
+            .Skip((parameters.Page - 1) * parameters.PageSize)
+            .Take(parameters.PageSize)
+            .Select(c => new
+            {
                 c.Id,
                 c.FirstName,
                 c.LastName,
-                c.FirstNameLatin,
-                c.LastNameLatin,
+                c.Email,
+                c.PhoneNumber,
                 c.DateOfBirth,
-                c.PassportExpiresOn))
+                c.PassportExpiresOn
+            })
             .ToListAsync(ct);
 
-        return TypedResults.Ok(customers);
+        var response = customers
+            .Select(c => new CustomerShortDetailsResponse(
+                c.Id,
+                c.FirstName,
+                c.LastName,
+                c.Email,
+                c.PhoneNumber,
+                c.DateOfBirth,
+                CustomerHelper.CalculateAge(c.DateOfBirth, today),
+                c.PassportExpiresOn,
+                PassportHelper.IsValid(c.PassportExpiresOn, today)))
+            .ToList();
+
+        var totalPages = (int)Math.Ceiling(totalCount / (double)parameters.PageSize);
+
+        return TypedResults.Ok(new PagedResponse<CustomerShortDetailsResponse>(
+            response,
+            parameters.Page,
+            parameters.PageSize,
+            totalCount,
+            totalPages));
     }
 
-    private static async Task<IResult> GetCustomerById(int id, SuiteCaseDbContext db, ISensitiveDataProtector dataProtector, CancellationToken ct)
+    private static async Task<Results<Ok<CustomerDetailsResponse>, ProblemHttpResult>> GetCustomerById(
+        int id,
+        HttpContext httpContext,
+        SuiteCaseDbContext db,
+        ISensitiveDataProtector dataProtector,
+        ILogger<CustomerEndpointLogs> logger,
+        CancellationToken ct)
     {
-        var customer = await db.Customers
-            .AsNoTracking()
-            .SingleOrDefaultAsync(c => c.Id == id, ct);
+        var customer = await db.Customers.AsNoTracking().SingleOrDefaultAsync(c => c.Id == id, ct);
 
-        return customer is null
-            ? TypedResults.NotFound()
-            : TypedResults.Ok(customer.ToCustomerDetailsResponse(dataProtector));
+        if (customer is null)
+        {
+            CustomerEndpointLogger.CustomerNotFoundOnDetailsRequest(logger, id);
+            return CustomerProblems.NotFound(httpContext);
+        }
+
+        return TypedResults.Ok(customer.ToCustomerDetailsResponse(dataProtector));
     }
 
-    private static async Task<IResult> CreateCustomer(CreateCustomerRequest request, SuiteCaseDbContext db, ISensitiveDataProtector dataProtector, CancellationToken ct)
+    private static async Task<Results<CreatedAtRoute<CustomerDetailsResponse>, ProblemHttpResult, ValidationProblem>> CreateCustomer(
+        CreateCustomerRequest request,
+        HttpContext httpContext,
+        SuiteCaseDbContext db,
+        ISensitiveDataProtector dataProtector,
+        ILogger<CustomerEndpointLogs> logger,
+        CancellationToken ct)
     {
-        var nationalId = NormalizeSensitiveValue(request.NationalId);
-        var passportNumber = NormalizeSensitiveValue(request.PassportNumber);
+        var isValidCountryCode = CustomerHelper.TryGetValidResidenceCountryCode(request.ResidenceCountryCode, out var residenceCountryCode);
+        if (!isValidCountryCode)
+            return CustomerProblems.InvalidResidenceCountryCode();
+
+        var nationalId = request.NationalId.NormalizeSensitiveValue();
+        var passportNumber = request.PassportNumber.NormalizeSensitiveValue();
 
         var nationalIdHash = nationalId is null ? null : dataProtector.Hash(nationalId);
         var passportNumberHash = passportNumber is null ? null : dataProtector.Hash(passportNumber);
 
-        if (nationalIdHash is not null && await db.Customers.AnyAsync(c => c.NationalIdHash == nationalIdHash, ct))
-            return TypedResults.Conflict($"A customer with this national ID: {nationalId} already exist");
+        if (nationalIdHash is not null)
+        {
+            var existingCustomerId = await db.Customers
+                .Where(c => c.NationalIdHash == nationalIdHash)
+                .Select(c => (int?)c.Id)
+                .SingleOrDefaultAsync(ct);
 
-        if (passportNumberHash is not null && await db.Customers.AnyAsync(c => c.PassportNumberHash == passportNumberHash, ct))
-            return TypedResults.Conflict($"A customer with this passport number: {passportNumber} already exist.");                 
+            if (existingCustomerId is not null)
+            {
+                CustomerEndpointLogger.CustomerCreateRejectedDuplicateNationalId(logger);
+                return CustomerProblems.DuplicateNationalId(httpContext, existingCustomerId.Value);
+            }
+        }
 
-        var customer = request.ToCustomer(DateTimeOffset.UtcNow, nationalId);
+        if (passportNumberHash is not null)
+        {
+            var existingCustomerId = await db.Customers
+                .Where(c => c.PassportNumberHash == passportNumberHash)
+                .Select(c => (int?)c.Id)
+                .SingleOrDefaultAsync(ct);
+
+            if (existingCustomerId is not null)
+            {
+                CustomerEndpointLogger.CustomerCreateRejectedDuplicatePassportNumber(logger);
+                return CustomerProblems.DuplicatePassportNumber(httpContext, existingCustomerId.Value);
+            }
+        }
+
+        var customer = request.ToCustomer(DateTimeOffset.UtcNow, nationalId, residenceCountryCode);
 
         customer.SetNationalId(nationalId is null ? null : dataProtector.Protect(nationalId), nationalIdHash);
         customer.SetPassportNumber(passportNumber is null ? null : dataProtector.Protect(passportNumber), passportNumberHash);
@@ -104,10 +186,13 @@ public static class CustomerEndpoints
         {
             await db.SaveChangesAsync(ct);
         }
-        catch (DbUpdateException ex) when(IsUniqueConstraintViolation(ex))
+        catch (DbUpdateException ex) when (DbExceptionsHelper.IsUniqueConstraintViolation(ex))
         {
-            return TypedResults.Conflict("A customer with the same national ID or passport number already exists.");
-        }        
+            CustomerEndpointLogger.CustomerCreateUniqueConstraintRaceConflict(logger, ex);
+            return CustomerProblems.DuplicateSensitiveIdentifier(httpContext);
+        }
+
+        CustomerEndpointLogger.CustomerCreated(logger, customer.Id);
 
         return TypedResults.CreatedAtRoute(
             customer.ToCustomerDetailsResponse(dataProtector),
@@ -116,68 +201,107 @@ public static class CustomerEndpoints
         );
     }
 
-    private static async Task<IResult> UpdateCustomer(int id, UpdateCustomerRequest request, SuiteCaseDbContext db, ISensitiveDataProtector dataProtector, CancellationToken ct)
+    private static async Task<Results<Ok<CustomerDetailsResponse>,ProblemHttpResult, ValidationProblem>> UpdateCustomer(
+        int id,
+        UpdateCustomerRequest request,
+        HttpContext httpContext,
+        SuiteCaseDbContext db,
+        ISensitiveDataProtector dataProtector,
+        ILogger<CustomerEndpointLogs> logger,
+        CancellationToken ct)
     {
         var currentCustomer = await db.Customers.SingleOrDefaultAsync(c => c.Id == id, ct);
 
         if (currentCustomer is null)
-            return TypedResults.NotFound();
+        {
+            CustomerEndpointLogger.CustomerNotFoundOnUpdateRequest(logger, id);
+            return CustomerProblems.NotFound(httpContext);
+        }
 
-        var nationalId = NormalizeSensitiveValue(request.NationalId);
-        var passportNumber = NormalizeSensitiveValue(request.PassportNumber);
+        var isValidCountryCode = CustomerHelper.TryGetValidResidenceCountryCode(request.ResidenceCountryCode, out var residenceCountryCode);
+        if (!isValidCountryCode)
+            return CustomerProblems.InvalidResidenceCountryCode();
 
+        var nationalId = request.NationalId.NormalizeSensitiveValue();
+        var passportNumber = request.PassportNumber.NormalizeSensitiveValue();
         var nationalIdHash = nationalId is null ? null : dataProtector.Hash(nationalId);
         var passportNumberHash = passportNumber is null ? null : dataProtector.Hash(passportNumber);
 
         if (nationalIdHash != currentCustomer.NationalIdHash)
         {
-            if (nationalIdHash is not null && await db.Customers.AnyAsync(c => c.Id != id && c.NationalIdHash == nationalIdHash, ct))
-                return TypedResults.Conflict($"A customer with this national ID: {nationalId} already exist.");
+            if (nationalIdHash is not null)
+            {
+                var existingCustomerId = await db.Customers
+                    .Where(c => c.Id != id && c.NationalIdHash == nationalIdHash)
+                    .Select(c => (int?)c.Id)
+                    .SingleOrDefaultAsync(ct);
+
+                if (existingCustomerId is not null)
+                {
+                    CustomerEndpointLogger.CustomerUpdateRejectedDuplicateNationalId(logger, id);
+                    return CustomerProblems.DuplicateNationalId(httpContext, existingCustomerId.Value);
+                }
+            }
 
             currentCustomer.SetNationalId(nationalId is null ? null : dataProtector.Protect(nationalId), nationalIdHash);
         }
 
         if (passportNumberHash != currentCustomer.PassportNumberHash)
         {
-            if (passportNumberHash is not null && await db.Customers.AnyAsync(c => c.Id != id && c.PassportNumberHash == passportNumberHash, ct))
-                return TypedResults.Conflict($"A customer with this passport number: {passportNumber} already exist.");
+            if (passportNumberHash is not null)
+            {
+                var existingCustomerId = await db.Customers
+                    .Where(c => c.Id != id && c.PassportNumberHash == passportNumberHash)
+                    .Select(c => (int?)c.Id)
+                    .SingleOrDefaultAsync(ct);
+
+                if (existingCustomerId is not null)
+                {
+                    CustomerEndpointLogger.CustomerUpdateRejectedDuplicatePassportNumber(logger, id);
+                    return CustomerProblems.DuplicatePassportNumber(httpContext, existingCustomerId.Value);
+                }
+            }
 
             currentCustomer.SetPassportNumber(passportNumber is null ? null : dataProtector.Protect(passportNumber), passportNumberHash);
         }
 
-        currentCustomer.UpdateFrom(request, DateTimeOffset.UtcNow, nationalId);
+        currentCustomer.UpdateFrom(request, DateTimeOffset.UtcNow, nationalId, residenceCountryCode);
 
         try
         {
             await db.SaveChangesAsync(ct);
         }
-        catch (DbUpdateException ex) when (IsUniqueConstraintViolation(ex))
+        catch (DbUpdateException ex) when (DbExceptionsHelper.IsUniqueConstraintViolation(ex))
         {
-            return TypedResults.Conflict("A customer with the same national ID or passport number already exists.");
-        }        
+            CustomerEndpointLogger.CustomerUpdateUniqueConstraintRaceConflict(logger, id, ex);
+            return CustomerProblems.DuplicateSensitiveIdentifier(httpContext);
+        }
+
+        CustomerEndpointLogger.CustomerUpdated(logger, id);
 
         return TypedResults.Ok(currentCustomer.ToCustomerDetailsResponse(dataProtector));
     }
 
-    private static async Task<IResult> SoftDeleteCustomer(int id, SuiteCaseDbContext db, CancellationToken ct)
+    private static async Task<Results<NoContent, ProblemHttpResult>> SoftDeleteCustomer(
+        int id,
+        HttpContext httpContext,
+        SuiteCaseDbContext db,
+        ILogger<CustomerEndpointLogs> logger,
+        CancellationToken ct)
     {
         var currentCustomer = await db.Customers.SingleOrDefaultAsync(c => c.Id == id, ct);
 
         if (currentCustomer is null)
-            return TypedResults.NotFound();
+        {
+            CustomerEndpointLogger.CustomerNotFoundOnDeleteRequest(logger, id);
+            return CustomerProblems.NotFound(httpContext);
+        }
 
         currentCustomer.SoftDelete(DateTimeOffset.UtcNow);
         await db.SaveChangesAsync(ct);
 
+        CustomerEndpointLogger.CustomerSoftDeleted(logger,id);
+
         return TypedResults.NoContent();
     }
-
-    private static string? NormalizeSensitiveValue(string? value)
-        => string.IsNullOrWhiteSpace(value) ? null : value.Trim().ToUpperInvariant();
-
-    private static bool IsUniqueConstraintViolation(DbUpdateException exception)
-        => exception.InnerException is SqlException sqlException && (sqlException.Number == 2601 || sqlException.Number == 2627);
-    //2601 -> duplicate key row with unique index
-    //2627 -> violation of unique constraint / primary key
-
 }
