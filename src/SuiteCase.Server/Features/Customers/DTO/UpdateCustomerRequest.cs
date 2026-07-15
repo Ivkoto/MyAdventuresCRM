@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 
 namespace SuiteCase.Server.Features.Customers.DTO;
 
@@ -37,7 +37,6 @@ public sealed record UpdateCustomerRequest(
     [MaxLength(20)]
     string? PhoneNumber,
 
-    [Length(2, 2)]
     string? ResidenceCountryCode,
 
     string? Notes

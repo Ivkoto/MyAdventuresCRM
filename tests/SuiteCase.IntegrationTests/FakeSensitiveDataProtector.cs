@@ -21,10 +21,9 @@ internal sealed class FakeSensitiveDataProtector : ISensitiveDataProtector
         return Encoding.UTF8.GetString(protectedBytes);
     }
 
-    public string Hash(string value)
+    public string Hash(string normalizedValue)
     {
-        var normalized = value.Trim().ToUpperInvariant();
-        var hashBytes = SHA256.HashData(Encoding.UTF8.GetBytes(normalized));
+        var hashBytes = SHA256.HashData(Encoding.UTF8.GetBytes(normalizedValue));
         return $"{HashPrefix}{Convert.ToHexString(hashBytes)}";
     }
 }

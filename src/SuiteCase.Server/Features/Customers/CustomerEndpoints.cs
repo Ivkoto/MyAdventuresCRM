@@ -1,14 +1,17 @@
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
-using SuiteCase.Core.Helpers;
+using SuiteCase.Core.Customers;
+using SuiteCase.Core.Entities;
 using SuiteCase.Core.Security;
 using SuiteCase.Server.Common.DTO;
 using SuiteCase.Server.Data;
 using SuiteCase.Server.Data.ErrorHandling;
 using SuiteCase.Server.Features.Customers.DTO;
 using SuiteCase.Server.Features.Customers.ErrorHandling;
-using SuiteCase.Server.Features.Customers.Helpers;
 using SuiteCase.Server.Features.Customers.Logging;
+using SuiteCase.Server.Features.Customers.Mapping;
+using SuiteCase.Server.Features.Customers.Queries;
+using SuiteCase.Server.Features.Customers.Validation;
 using SuiteCase.Server.Security;
 
 namespace SuiteCase.Server.Features.Customers;
@@ -60,13 +63,12 @@ public static class CustomerEndpoints
     }
 
     private static async Task<Ok<PagedResponse<CustomerShortDetailsResponse>>> GetCustomers(
-        [AsParameters] CustomerQueryParameters parameters,
-        SuiteCaseDbContext db,
-        ISensitiveDataProtector dataProtector,
-        CancellationToken ct)
+        [AsParameters] CustomerQueryParameters parameters, SuiteCaseDbContext db,
+        ISensitiveDataProtector dataProtector, CancellationToken ct)
     {
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
-        var query = CustomerHelper.ApplySearch(db.Customers.AsNoTracking(), parameters.Search, dataProtector);
+        var existingCustomers = db.Customers.AsNoTracking();
+        var query = CustomerQueries.ApplySearch(existingCustomers, parameters.Search, dataProtector);
         var totalCount = await query.CountAsync(ct);
 
         var customers = await query
@@ -95,9 +97,9 @@ public static class CustomerEndpoints
                 c.Email,
                 c.PhoneNumber,
                 c.DateOfBirth,
-                CustomerHelper.CalculateAge(c.DateOfBirth, today),
+                CustomerAgeCalculator.CalculateAge(c.DateOfBirth, today),
                 c.PassportExpiresOn,
-                PassportHelper.IsValid(c.PassportExpiresOn, today)))
+                CustomerPassportHelper.IsValid(c.PassportExpiresOn, today)))
             .ToList();
 
         var totalPages = (int)Math.Ceiling(totalCount / (double)parameters.PageSize);
@@ -111,41 +113,33 @@ public static class CustomerEndpoints
     }
 
     private static async Task<Results<Ok<CustomerDetailsResponse>, ProblemHttpResult>> GetCustomerById(
-        int id,
-        HttpContext httpContext,
-        SuiteCaseDbContext db,
-        ISensitiveDataProtector dataProtector,
-        ILogger<CustomerEndpointLogs> logger,
-        CancellationToken ct)
+        int id, HttpContext httpContext, SuiteCaseDbContext db,
+        ISensitiveDataProtector dataProtector, ILogger<CustomerEndpointLogs> logger, CancellationToken ct)
     {
         var customer = await db.Customers.AsNoTracking().SingleOrDefaultAsync(c => c.Id == id, ct);
 
         if (customer is null)
         {
             CustomerEndpointLogger.CustomerNotFoundOnDetailsRequest(logger, id);
-            return CustomerProblems.NotFound(httpContext);
+            return CustomerHttpResultProblems.NotFound(httpContext);
         }
 
         return TypedResults.Ok(customer.ToCustomerDetailsResponse(dataProtector));
     }
 
     private static async Task<Results<CreatedAtRoute<CustomerDetailsResponse>, ProblemHttpResult, ValidationProblem>> CreateCustomer(
-        CreateCustomerRequest request,
-        HttpContext httpContext,
-        SuiteCaseDbContext db,
-        ISensitiveDataProtector dataProtector,
-        ILogger<CustomerEndpointLogs> logger,
-        CancellationToken ct)
+        CreateCustomerRequest request, HttpContext httpContext, SuiteCaseDbContext db,
+        ISensitiveDataProtector dataProtector, ILogger<CustomerEndpointLogs> logger, CancellationToken ct)
     {
-        var isValidCountryCode = CustomerHelper.TryGetValidResidenceCountryCode(request.ResidenceCountryCode, out var residenceCountryCode);
+        var isValidCountryCode = CustomerCountryCodeResolver.TryGetValidResidenceCountryCode(request.ResidenceCountryCode, out var residenceCountryCode);
         if (!isValidCountryCode)
-            return CustomerProblems.InvalidResidenceCountryCode();
+            return CustomerValidationProblem.InvalidResidenceCountryCode();
 
-        var nationalId = request.NationalId.NormalizeSensitiveValue();
-        var passportNumber = request.PassportNumber.NormalizeSensitiveValue();
+        var normalizedNationalId = request.NationalId.NormalizeSensitiveValue();
+        var normalizedPassportNumber = request.PassportNumber.NormalizeSensitiveValue();
 
-        var nationalIdHash = nationalId is null ? null : dataProtector.Hash(nationalId);
-        var passportNumberHash = passportNumber is null ? null : dataProtector.Hash(passportNumber);
+        var nationalIdHash = normalizedNationalId is null ? null : dataProtector.Hash(normalizedNationalId);
+        var passportNumberHash = normalizedPassportNumber is null ? null : dataProtector.Hash(normalizedPassportNumber);
 
         if (nationalIdHash is not null)
         {
@@ -157,7 +151,7 @@ public static class CustomerEndpoints
             if (existingCustomerId is not null)
             {
                 CustomerEndpointLogger.CustomerCreateRejectedDuplicateNationalId(logger);
-                return CustomerProblems.DuplicateNationalId(httpContext, existingCustomerId.Value);
+                return CustomerHttpResultProblems.DuplicateNationalId(httpContext, existingCustomerId.Value);
             }
         }
 
@@ -171,14 +165,24 @@ public static class CustomerEndpoints
             if (existingCustomerId is not null)
             {
                 CustomerEndpointLogger.CustomerCreateRejectedDuplicatePassportNumber(logger);
-                return CustomerProblems.DuplicatePassportNumber(httpContext, existingCustomerId.Value);
+                return CustomerHttpResultProblems.DuplicatePassportNumber(httpContext, existingCustomerId.Value);
             }
         }
 
-        var customer = request.ToCustomer(DateTimeOffset.UtcNow, nationalId, residenceCountryCode);
+        var encryptedNationalId = normalizedNationalId is null ? null : dataProtector.Protect(normalizedNationalId);
+        var encryptedPassportNumber = normalizedPassportNumber is null ? null : dataProtector.Protect(normalizedPassportNumber);
 
-        customer.SetNationalId(nationalId is null ? null : dataProtector.Protect(nationalId), nationalIdHash);
-        customer.SetPassportNumber(passportNumber is null ? null : dataProtector.Protect(passportNumber), passportNumberHash);
+        Customer customer;
+        try
+        {
+            customer = CustomerFactory.Create(
+                request, normalizedNationalId, encryptedNationalId, nationalIdHash,
+                encryptedPassportNumber, passportNumberHash, residenceCountryCode, DateTimeOffset.UtcNow);
+        }
+        catch (CustomerDateOfBirthMismatchException)
+        {
+            return CustomerValidationProblem.DateOfBirthDoesNotMatchNationalId();
+        }
 
         db.Customers.Add(customer);
 
@@ -186,10 +190,15 @@ public static class CustomerEndpoints
         {
             await db.SaveChangesAsync(ct);
         }
-        catch (DbUpdateException ex) when (DbExceptionsHelper.IsUniqueConstraintViolation(ex))
+        catch (DbUpdateException ex) when (SqlServerExceptionClassifier.IsUniqueConstraintViolation(ex))
         {
-            CustomerEndpointLogger.CustomerCreateUniqueConstraintRaceConflict(logger, ex);
-            return CustomerProblems.DuplicateSensitiveIdentifier(httpContext);
+            var conflict = await CustomerQueries.FindSensitiveIdentifierConflictAsync(
+                db, nationalIdHash, passportNumberHash, null, ct);
+
+            if (conflict is null) throw;
+
+            CustomerEndpointLogger.CustomerCreateUniqueConstraintRaceConflict(logger, conflict.Kind, ex);
+            return CustomerHttpResultProblems.FromSensitiveIdentifierConflict(httpContext, conflict);
         }
 
         CustomerEndpointLogger.CustomerCreated(logger, customer.Id);
@@ -201,80 +210,83 @@ public static class CustomerEndpoints
         );
     }
 
-    private static async Task<Results<Ok<CustomerDetailsResponse>,ProblemHttpResult, ValidationProblem>> UpdateCustomer(
-        int id,
-        UpdateCustomerRequest request,
-        HttpContext httpContext,
-        SuiteCaseDbContext db,
-        ISensitiveDataProtector dataProtector,
-        ILogger<CustomerEndpointLogs> logger,
-        CancellationToken ct)
+    private static async Task<Results<Ok<CustomerDetailsResponse>, ProblemHttpResult, ValidationProblem>> UpdateCustomer(
+        int id, UpdateCustomerRequest request, HttpContext httpContext, SuiteCaseDbContext db,
+        ISensitiveDataProtector dataProtector, ILogger<CustomerEndpointLogs> logger, CancellationToken ct)
     {
         var currentCustomer = await db.Customers.SingleOrDefaultAsync(c => c.Id == id, ct);
 
         if (currentCustomer is null)
         {
             CustomerEndpointLogger.CustomerNotFoundOnUpdateRequest(logger, id);
-            return CustomerProblems.NotFound(httpContext);
+            return CustomerHttpResultProblems.NotFound(httpContext);
         }
 
-        var isValidCountryCode = CustomerHelper.TryGetValidResidenceCountryCode(request.ResidenceCountryCode, out var residenceCountryCode);
+        var isValidCountryCode = CustomerCountryCodeResolver.TryGetValidResidenceCountryCode(request.ResidenceCountryCode, out var residenceCountryCode);
         if (!isValidCountryCode)
-            return CustomerProblems.InvalidResidenceCountryCode();
+            return CustomerValidationProblem.InvalidResidenceCountryCode();
 
-        var nationalId = request.NationalId.NormalizeSensitiveValue();
-        var passportNumber = request.PassportNumber.NormalizeSensitiveValue();
-        var nationalIdHash = nationalId is null ? null : dataProtector.Hash(nationalId);
-        var passportNumberHash = passportNumber is null ? null : dataProtector.Hash(passportNumber);
+        var normalizedNationalId = request.NationalId.NormalizeSensitiveValue();
+        var normalizedPassportNumber = request.PassportNumber.NormalizeSensitiveValue();
 
-        if (nationalIdHash != currentCustomer.NationalIdHash)
+        var nationalIdHash = normalizedNationalId is null ? null : dataProtector.Hash(normalizedNationalId);
+        var passportNumberHash = normalizedPassportNumber is null ? null : dataProtector.Hash(normalizedPassportNumber);
+
+        if (nationalIdHash != currentCustomer.NationalIdHash && nationalIdHash is not null)
         {
-            if (nationalIdHash is not null)
+            var existingCustomerId = await db.Customers
+                .Where(c => c.Id != id && c.NationalIdHash == nationalIdHash)
+                .Select(c => (int?)c.Id)
+                .SingleOrDefaultAsync(ct);
+
+            if (existingCustomerId is not null)
             {
-                var existingCustomerId = await db.Customers
-                    .Where(c => c.Id != id && c.NationalIdHash == nationalIdHash)
-                    .Select(c => (int?)c.Id)
-                    .SingleOrDefaultAsync(ct);
-
-                if (existingCustomerId is not null)
-                {
-                    CustomerEndpointLogger.CustomerUpdateRejectedDuplicateNationalId(logger, id);
-                    return CustomerProblems.DuplicateNationalId(httpContext, existingCustomerId.Value);
-                }
+                CustomerEndpointLogger.CustomerUpdateRejectedDuplicateNationalId(logger, id);
+                return CustomerHttpResultProblems.DuplicateNationalId(httpContext, existingCustomerId.Value);
             }
-
-            currentCustomer.SetNationalId(nationalId is null ? null : dataProtector.Protect(nationalId), nationalIdHash);
         }
 
-        if (passportNumberHash != currentCustomer.PassportNumberHash)
+        if (passportNumberHash != currentCustomer.PassportNumberHash && passportNumberHash is not null)
         {
-            if (passportNumberHash is not null)
+            var existingCustomerId = await db.Customers
+                .Where(c => c.Id != id && c.PassportNumberHash == passportNumberHash)
+                .Select(c => (int?)c.Id)
+                .SingleOrDefaultAsync(ct);
+
+            if (existingCustomerId is not null)
             {
-                var existingCustomerId = await db.Customers
-                    .Where(c => c.Id != id && c.PassportNumberHash == passportNumberHash)
-                    .Select(c => (int?)c.Id)
-                    .SingleOrDefaultAsync(ct);
-
-                if (existingCustomerId is not null)
-                {
-                    CustomerEndpointLogger.CustomerUpdateRejectedDuplicatePassportNumber(logger, id);
-                    return CustomerProblems.DuplicatePassportNumber(httpContext, existingCustomerId.Value);
-                }
+                CustomerEndpointLogger.CustomerUpdateRejectedDuplicatePassportNumber(logger, id);
+                return CustomerHttpResultProblems.DuplicatePassportNumber(httpContext, existingCustomerId.Value);
             }
-
-            currentCustomer.SetPassportNumber(passportNumber is null ? null : dataProtector.Protect(passportNumber), passportNumberHash);
         }
 
-        currentCustomer.UpdateFrom(request, DateTimeOffset.UtcNow, nationalId, residenceCountryCode);
+        var encryptedNationalId = normalizedNationalId is null ? null : dataProtector.Protect(normalizedNationalId);
+        var encryptedPassportNumber = normalizedPassportNumber is null ? null : dataProtector.Protect(normalizedPassportNumber);
+
+        try
+        {
+            CustomerFactory.Update(
+                currentCustomer, request, normalizedNationalId, encryptedNationalId,
+                nationalIdHash, encryptedPassportNumber, passportNumberHash, residenceCountryCode, DateTimeOffset.UtcNow);
+        }
+        catch (CustomerDateOfBirthMismatchException)
+        {
+            return CustomerValidationProblem.DateOfBirthDoesNotMatchNationalId();
+        }
 
         try
         {
             await db.SaveChangesAsync(ct);
         }
-        catch (DbUpdateException ex) when (DbExceptionsHelper.IsUniqueConstraintViolation(ex))
+        catch (DbUpdateException ex) when (SqlServerExceptionClassifier.IsUniqueConstraintViolation(ex))
         {
-            CustomerEndpointLogger.CustomerUpdateUniqueConstraintRaceConflict(logger, id, ex);
-            return CustomerProblems.DuplicateSensitiveIdentifier(httpContext);
+            var conflict = await CustomerQueries.FindSensitiveIdentifierConflictAsync(
+                db, nationalIdHash, passportNumberHash, id, ct);
+
+            if (conflict is null) throw;
+
+            CustomerEndpointLogger.CustomerUpdateUniqueConstraintRaceConflict(logger, id, conflict.Kind, ex);
+            return CustomerHttpResultProblems.FromSensitiveIdentifierConflict(httpContext, conflict);
         }
 
         CustomerEndpointLogger.CustomerUpdated(logger, id);
@@ -283,24 +295,21 @@ public static class CustomerEndpoints
     }
 
     private static async Task<Results<NoContent, ProblemHttpResult>> SoftDeleteCustomer(
-        int id,
-        HttpContext httpContext,
-        SuiteCaseDbContext db,
-        ILogger<CustomerEndpointLogs> logger,
-        CancellationToken ct)
+        int id, HttpContext httpContext, SuiteCaseDbContext db,
+        ILogger<CustomerEndpointLogs> logger, CancellationToken ct)
     {
         var currentCustomer = await db.Customers.SingleOrDefaultAsync(c => c.Id == id, ct);
 
         if (currentCustomer is null)
         {
             CustomerEndpointLogger.CustomerNotFoundOnDeleteRequest(logger, id);
-            return CustomerProblems.NotFound(httpContext);
+            return CustomerHttpResultProblems.NotFound(httpContext);
         }
 
         currentCustomer.SoftDelete(DateTimeOffset.UtcNow);
         await db.SaveChangesAsync(ct);
 
-        CustomerEndpointLogger.CustomerSoftDeleted(logger,id);
+        CustomerEndpointLogger.CustomerSoftDeleted(logger, id);
 
         return TypedResults.NoContent();
     }

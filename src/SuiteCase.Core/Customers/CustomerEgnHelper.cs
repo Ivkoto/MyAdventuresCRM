@@ -1,27 +1,9 @@
-﻿namespace SuiteCase.Core.Helpers;
-
-/// <summary>
-/// Provides passport-related business rules used by SuiteCase.
-/// </summary>
-public static class PassportHelper
-{
-    /// <summary>
-    /// Determines whether a passport is valid for at least the next six months from the supplied date.
-    /// </summary>
-    /// <param name="expiresOn">The passport expiration date, if known.</param>
-    /// <param name="today">The date used as the reference point for the six-month validity rule.</param>
-    /// <returns>
-    /// <see langword="true" /> when <paramref name="expiresOn" /> is present and is on or after
-    /// six months from <paramref name="today" />; otherwise, <see langword="false" />.
-    /// </returns>
-    public static bool IsValid(DateOnly? expiresOn, DateOnly today)
-        => expiresOn is not null && expiresOn.Value >= today.AddMonths(6);
-}
+namespace SuiteCase.Core.Customers;
 
 /// <summary>
 /// Utilities for working with Bulgarian EGN (Единен граждански номер).
 /// </summary>
-public static class EgnHelper
+public static class CustomerEgnHelper
 {
     /// <summary>
     /// Attempts to extract a date of birth from a Bulgarian EGN (10-digit national ID).
@@ -54,7 +36,7 @@ public static class EgnHelper
             return null;
 
         // EGN must be exactly 10 digits
-        if (nationalId.Length != 10 || !nationalId.All(char.IsDigit))
+        if (nationalId.Length != 10 || !nationalId.All(character => character is >= '0' and <= '9'))
             return null;
 
         int year = int.Parse(nationalId[..2]);

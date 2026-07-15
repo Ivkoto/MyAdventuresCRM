@@ -1,0 +1,325 @@
+using System.Net;
+using System.Net.Http.Json;
+using System.Text.Json;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using SuiteCase.Core.Countries;
+using SuiteCase.Server.Data;
+using SuiteCase.Server.Features.Customers.DTO;
+
+namespace SuiteCase.IntegrationTests.Customers;
+
+[Collection(SqlServerCollection.Name)]
+public sealed class CustomerCreateEndpointTests(SqlServerFixture sqlServer)
+    : CustomerEndpointTestBase(sqlServer)
+{
+    [Fact]
+    public async Task CreateCustomer_ReturnsConflict_WhenNationalIdBelongsToActiveCustomer()
+    {
+        using var factory = CreateFactory();
+        using var client = CreateClient(factory);
+
+        var firstResponse = await client.PostAsJsonAsync("/api/customers",
+            CreateRequest(nationalId: "9001154218", passportNumber: "PA1234567"));
+
+        Assert.Equal(HttpStatusCode.Created, firstResponse.StatusCode);
+        var firstCustomer = await firstResponse.Content.ReadFromJsonAsync<CustomerDetailsResponse>();
+        Assert.NotNull(firstCustomer);
+
+        var duplicateResponse = await client.PostAsJsonAsync("/api/customers",
+            CreateRequest(
+                firstName: "Petar",
+                lastName: "Ivanov",
+                nationalId: "9001154218",
+                passportNumber: "PB6543210"));
+
+        Assert.Equal(HttpStatusCode.Conflict, duplicateResponse.StatusCode);
+        var problem = await duplicateResponse.Content.ReadFromJsonAsync<ProblemDetails>();
+        Assert.NotNull(problem);
+        Assert.Equal(409, problem.Status);
+        Assert.Equal("Duplicate customer", problem.Title);
+        Assert.DoesNotContain("9001154218", problem.Detail);
+        Assert.Equal("A customer with this national ID already exists.", problem.Detail);
+
+        Assert.True(problem.Extensions.ContainsKey("code"));
+        Assert.Equal("customer.duplicate_national_id", problem.Extensions["code"]!.ToString());
+
+        Assert.True(problem.Extensions.ContainsKey("traceId"));
+        Assert.False(string.IsNullOrWhiteSpace(problem.Extensions["traceId"]!.ToString()));
+
+        Assert.True(problem.Extensions.ContainsKey("existingCustomerId"));
+        var existingId = ((JsonElement)problem.Extensions["existingCustomerId"]!).GetInt32();
+        Assert.Equal(firstCustomer.Id, existingId);
+    }
+
+    [Fact]
+    public async Task CreateCustomer_ReturnsConflict_WhenPassportNumberBelongsToActiveCustomer()
+    {
+        using var factory = CreateFactory();
+        using var client = CreateClient(factory);
+
+        var firstResponse = await client.PostAsJsonAsync("/api/customers",
+            CreateRequest(nationalId: "9001154218", passportNumber: "PA1234567"));
+
+        Assert.Equal(HttpStatusCode.Created, firstResponse.StatusCode);
+        var firstCustomer = await firstResponse.Content.ReadFromJsonAsync<CustomerDetailsResponse>();
+        Assert.NotNull(firstCustomer);
+
+        var duplicateResponse = await client.PostAsJsonAsync("/api/customers",
+            CreateRequest(
+                firstName: "Petar",
+                lastName: "Ivanov",
+                nationalId: "8507120055",
+                passportNumber: " PA1234567 "));
+
+        Assert.Equal(HttpStatusCode.Conflict, duplicateResponse.StatusCode);
+        var problem = await duplicateResponse.Content.ReadFromJsonAsync<ProblemDetails>();
+        Assert.NotNull(problem);
+        Assert.Equal(409, problem.Status);
+        Assert.Equal("Duplicate customer", problem.Title);
+        Assert.DoesNotContain("PA1234567", problem.Detail);
+        Assert.Equal("A customer with this passport number already exists.", problem.Detail);
+
+        Assert.True(problem.Extensions.ContainsKey("code"));
+        Assert.Equal("customer.duplicate_passport_number", problem.Extensions["code"]!.ToString());
+
+        Assert.True(problem.Extensions.ContainsKey("traceId"));
+        Assert.False(string.IsNullOrWhiteSpace(problem.Extensions["traceId"]!.ToString()));
+
+        Assert.True(problem.Extensions.ContainsKey("existingCustomerId"));
+        var existingId = ((JsonElement)problem.Extensions["existingCustomerId"]!).GetInt32();
+        Assert.Equal(firstCustomer.Id, existingId);
+    }
+
+    [Fact]
+    public async Task CreateCustomer_ReturnsBadRequest_WhenRequiredFieldsAreMissing()
+    {
+        using var factory = CreateFactory();
+        using var client = CreateClient(factory);
+
+        var response = await client.PostAsJsonAsync("/api/customers",
+            new
+            {
+                firstName = "",
+                lastName = ""
+            });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
+
+        var problem = await response.Content.ReadFromJsonAsync<ValidationProblemDetails>();
+        Assert.NotNull(problem);
+        Assert.Equal(400, problem.Status);
+        Assert.NotNull(problem.Errors);
+        Assert.NotEmpty(problem.Errors);
+
+        var firstNameKey = problem.Errors.ContainsKey("firstName") ? "firstName" : "FirstName";
+        var lastNameKey = problem.Errors.ContainsKey("lastName") ? "lastName" : "LastName";
+
+        Assert.True(problem.Errors.ContainsKey(firstNameKey),
+            "Expected validation error for firstName/FirstName");
+        Assert.NotEmpty(problem.Errors[firstNameKey]);
+
+        Assert.True(problem.Errors.ContainsKey(lastNameKey),
+            "Expected validation error for lastName/LastName");
+        Assert.NotEmpty(problem.Errors[lastNameKey]);
+
+        Assert.False(problem.Extensions.ContainsKey("code"),
+            "Validation errors should not include business error 'code' extension");
+    }
+
+    [Fact]
+    public async Task CreateCustomer_DefaultsResidenceCountryCodeToBulgaria_WhenCountryIsMissing()
+    {
+        using var factory = CreateFactory();
+        using var client = CreateClient(factory);
+
+        var response = await client.PostAsJsonAsync("/api/customers",
+            CreateRequest(residenceCountryCode: null));
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+
+        var created = await response.Content.ReadFromJsonAsync<CustomerDetailsResponse>();
+        Assert.NotNull(created);
+        Assert.Equal("BG", created.ResidenceCountryCode);
+        Assert.Equal("Bulgaria", created.ResidenceCountryName);
+    }
+
+    [Fact]
+    public async Task CreateCustomer_NormalizesTextSensitiveValuesAndCountryCode()
+    {
+        using var factory = CreateFactory();
+        using var client = CreateClient(factory);
+
+        var response = await client.PostAsJsonAsync("/api/customers",
+            new CreateCustomerRequest(
+                " Ivan ",
+                " Georgiev ",
+                " Petrov ",
+                "9001154218",
+                new DateOnly(1990, 1, 15),
+                " pa1234567 ",
+                new DateOnly(2030, 5, 1),
+                "ivan.petrov@example.com",
+                " +359888111222 ",
+                " gb ",
+                " Test customer "));
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var created = await response.Content.ReadFromJsonAsync<CustomerDetailsResponse>();
+        Assert.NotNull(created);
+        Assert.Equal("Ivan", created.FirstName);
+        Assert.Equal("Georgiev", created.MiddleName);
+        Assert.Equal("Petrov", created.LastName);
+        Assert.Equal("PA1234567", created.PassportNumber);
+        Assert.Equal("+359888111222", created.PhoneNumber);
+        Assert.Equal("GB", created.ResidenceCountryCode);
+        Assert.Equal("United Kingdom", created.ResidenceCountryName);
+        Assert.Equal("Test customer", created.Notes);
+    }
+
+    [Fact]
+    public async Task CreateCustomer_DerivesDateOfBirthFromNationalId_WhenDateOfBirthIsMissing()
+    {
+        using var factory = CreateFactory();
+        using var client = CreateClient(factory);
+
+        var response = await client.PostAsJsonAsync(
+            "/api/customers",
+            new CreateCustomerRequest(
+                "Ivan",
+                null,
+                "Petrov",
+                "8501014017",
+                null,
+                "PA1234567",
+                new DateOnly(2030, 5, 1),
+                null,
+                null,
+                Countries.DefaultCode,
+                null));
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var created = await response.Content.ReadFromJsonAsync<CustomerDetailsResponse>();
+        Assert.NotNull(created);
+        Assert.Equal(new DateOnly(1985, 1, 1), created.DateOfBirth);
+    }
+
+    [Fact]
+    public async Task CreateCustomer_ReturnsBadRequest_WhenDateOfBirthDoesNotMatchNationalId()
+    {
+        using var factory = CreateFactory();
+        using var client = CreateClient(factory);
+
+        var response = await client.PostAsJsonAsync(
+            "/api/customers",
+            new CreateCustomerRequest(
+                "Ivan",
+                null,
+                "Petrov",
+                "8501014017",
+                new DateOnly(1990, 6, 15),
+                "PA1234567",
+                new DateOnly(2030, 5, 1),
+                null,
+                null,
+                Countries.DefaultCode,
+                null));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
+
+        var problem = await response.Content.ReadFromJsonAsync<ValidationProblemDetails>();
+        Assert.NotNull(problem);
+        Assert.Equal(400, problem.Status);
+        Assert.True(problem.Errors.ContainsKey(nameof(CreateCustomerRequest.DateOfBirth)));
+        Assert.Contains(
+            "Date of birth must match the date encoded in a valid Bulgarian national ID.",
+            problem.Errors[nameof(CreateCustomerRequest.DateOfBirth)]);
+
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<SuiteCaseDbContext>();
+        Assert.False(await db.Customers.IgnoreQueryFilters().AnyAsync());
+    }
+
+    [Fact]
+    public async Task CreateCustomer_ReturnsBadRequest_WhenResidenceCountryCodeIsUnsupported()
+    {
+        using var factory = CreateFactory();
+        using var client = CreateClient(factory);
+
+        var response = await client.PostAsJsonAsync("/api/customers",
+            CreateRequest(residenceCountryCode: "ZZ"));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
+
+        var problem = await response.Content.ReadFromJsonAsync<ValidationProblemDetails>();
+        Assert.NotNull(problem);
+        Assert.Equal(400, problem.Status);
+        Assert.True(problem.Errors.ContainsKey(nameof(CreateCustomerRequest.ResidenceCountryCode)));
+        Assert.Contains(
+            "Residence country code must be a supported European ISO alpha-2 country code.",
+            problem.Errors[nameof(CreateCustomerRequest.ResidenceCountryCode)]);
+    }
+
+    [Fact]
+    public async Task CreateCustomer_EnsureStoresSensitiveValuesProtectedAndHashed_WhenAddToExistingOrNewCustomer()
+    {
+        using var factory = CreateFactory();
+        using var client = CreateClient(factory);
+
+        var response = await client.PostAsJsonAsync("/api/customers",
+            CreateRequest(nationalId: "9001154218", passportNumber: "PA1234567"));
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+
+        var created = await response.Content.ReadFromJsonAsync<CustomerDetailsResponse>();
+        Assert.NotNull(created);
+
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<SuiteCaseDbContext>();
+        var customer = await db.Customers
+            .IgnoreQueryFilters()
+            .SingleAsync(c => c.Id == created.Id);
+
+        Assert.NotNull(customer.NationalIdEncrypted);
+        Assert.NotNull(customer.NationalIdHash);
+        Assert.NotNull(customer.PassportNumberEncrypted);
+        Assert.NotNull(customer.PassportNumberHash);
+        Assert.NotEqual("9001154218", customer.NationalIdEncrypted);
+        Assert.NotEqual("9001154218", customer.NationalIdHash);
+        Assert.NotEqual("PA1234567", customer.PassportNumberEncrypted);
+        Assert.NotEqual("PA1234567", customer.PassportNumberHash);
+    }
+
+    [Fact]
+    public async Task CreateCustomer_AllowsSameSensitiveValues_AfterSoftDelete()
+    {
+        using var factory = CreateFactory();
+        using var client = CreateClient(factory);
+
+        var firstResponse = await client.PostAsJsonAsync(
+            "/api/customers",
+            CreateRequest(nationalId: "9001154218", passportNumber: "PA1234567"));
+
+        Assert.Equal(HttpStatusCode.Created, firstResponse.StatusCode);
+
+        var firstCustomer = await firstResponse.Content.ReadFromJsonAsync<CustomerDetailsResponse>();
+        Assert.NotNull(firstCustomer);
+
+        var deleteResponse = await client.DeleteAsync($"/api/customers/{firstCustomer.Id}");
+        Assert.Equal(HttpStatusCode.NoContent, deleteResponse.StatusCode);
+
+        var recreateResponse = await client.PostAsJsonAsync(
+            "/api/customers",
+            CreateRequest(
+                firstName: "Ivan",
+                lastName: "Petrov",
+                nationalId: "9001154218",
+                passportNumber: "PA1234567"));
+
+        Assert.Equal(HttpStatusCode.Created, recreateResponse.StatusCode);
+    }
+}

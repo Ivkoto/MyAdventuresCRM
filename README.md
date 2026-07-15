@@ -32,18 +32,6 @@ SuiteCase is designed the other way around: it wraps around the agency's establi
 SuiteCase starts as a focused solution for real agency workflows.
 The goal is not “another CRM,” but a **back-office operating system for travel agencies**.
 
-## Current Status
-Early-stage product build.
-
-The first backend slice is in place for Customer management, including EF Core persistence, SQL Server migrations, OpenAPI support, and initial automated tests. The UI and broader domain flow are still actively shaped, and the system is not production-ready yet.
-
-## Scope (Phase 1)
-- Customer directory and customer detail workflows
-- Programs and departures
-- Booking studio and quote snapshot logic
-- Payment tracking and alerts
-- Document workflow placeholders
-
 ## Architecture Direction
 - Current: `Client + Server + Core` with vertical/feature-based slices inside the Server project
 - Goal: evolve safely to full Clean Architecture only when complexity requires it
@@ -65,7 +53,6 @@ test/     - Only test-related work, or mostly test infrastructure
 docs/     - Documentation only
 chore/    - Maintenance work that is not a feature, bug fix, test, docs, or refactor
 refactor/ - Code structure changes without changing behavior
-codex/    - Prefix for branches created by Codex, combined with the normal branch type when useful
 ```
 
 Examples:
@@ -92,10 +79,6 @@ chore/configure-dotnet-tools
 
 refactor/extract-customer-normalization
 refactor/customer-endpoint-handlers
-
-codex/feature/customer-minimal-api
-codex/fix/customer-soft-delete-recreate
-codex/test/customer-integration-tests
 ```
 
 If behavior changes, the branch is not only a refactor. Use `feature/` or `fix/` instead.

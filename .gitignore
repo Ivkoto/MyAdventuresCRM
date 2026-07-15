@@ -13,10 +13,6 @@ obj/
 DeleteBinObjFolders.bat
 AGENTS.md
 
-# User-specific folders
-Info/
-docs/
-
 # VS Code
 .vscode/
 

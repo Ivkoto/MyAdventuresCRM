@@ -4,13 +4,12 @@ using Microsoft.EntityFrameworkCore;
 namespace SuiteCase.Server.Data.ErrorHandling;
 
 /// <summary>
-/// Provides helper methods for classifying database exceptions raised by EF Core operations.
+/// Classifies EF Core update exceptions by inspecting the underlying SQL Server error.
 /// </summary>
-public static class DbExceptionsHelper
+public static class SqlServerExceptionClassifier
 {
     // 2601 -> duplicate key row with unique index
     private const int CannotInsertDuplicateKeyRow = 2601;
-
     // 2627 -> violation of unique constraint / primary key
     private const int ViolationOfUniqueConstraint = 2627;
 
