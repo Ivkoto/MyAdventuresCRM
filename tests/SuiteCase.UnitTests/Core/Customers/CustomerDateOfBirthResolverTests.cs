@@ -51,11 +51,17 @@ public sealed class CustomerDateOfBirthResolverTests
     }
 
     [Fact]
-    public void Resolve_ThrowsCustomerDateOfBirthMismatchException_WhenSuppliedDateOfBirthDoesNotMatchValidNationalId()
+    public void Resolve_ForeignIdentifierPassesEgnChecksum_ReturnsSuppliedDateOfBirth()
     {
-        var suppliedDateOfBirth = new DateOnly(1990, 6, 15);
+        const string nationalId = "0101050000";
+        var suppliedDateOfBirth = new DateOnly(2005, 1, 1);
 
-        Assert.Throws<CustomerDateOfBirthMismatchException>(
-            () => CustomerDateOfBirthResolver.Resolve("8501014017", suppliedDateOfBirth));
+        Assert.Equal(
+            new DateOnly(1901, 1, 5),
+            CustomerEgnHelper.TryExtractDateOfBirth(nationalId));
+
+        var result = CustomerDateOfBirthResolver.Resolve(nationalId, suppliedDateOfBirth);
+
+        Assert.Equal(suppliedDateOfBirth, result);
     }
 }

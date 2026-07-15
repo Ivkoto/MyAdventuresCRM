@@ -82,9 +82,9 @@ public sealed class CustomerEgnHelperTests
     }
 
     [Fact]
-    public void TryExtractDateOfBirth_ReturnsNull_ForForeignPlaceholder()
+    public void TryExtractDateOfBirth_ReturnsNull_ForSpecificForeignPlaceholderWithInvalidChecksum()
     {
-        // Foreign placeholder like mmddyy0000 will fail checksum
+        // This specific mmddyy0000 placeholder does not pass EGN checksum validation.
         var result = CustomerEgnHelper.TryExtractDateOfBirth("0115850000");
 
         Assert.Null(result);

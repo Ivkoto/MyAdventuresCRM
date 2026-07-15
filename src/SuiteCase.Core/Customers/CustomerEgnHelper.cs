@@ -7,9 +7,11 @@ public static class CustomerEgnHelper
 {
     /// <summary>
     /// Attempts to extract a date of birth from a Bulgarian EGN (10-digit national ID).
-    /// Foreign placeholder values like mmddyy0000 will fail checksum validation.
     /// </summary>
     /// <remarks>
+    /// Passing EGN structural and checksum validation does not establish the identifier's issuing scheme.
+    /// Callers working with untyped national identifiers must not treat a successful parse as proof that the value is an EGN.
+    ///
     /// EGN month encoding (official GRAO specification):
     /// <list type="bullet">
     ///   <item><description>Month 1–12: born in 1900–1999 (year += 1900)</description></item>

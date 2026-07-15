@@ -84,9 +84,15 @@ public static class CustomerFactory
         customer.FirstNameLatin = NormalizeOptionalText(request.FirstNameLatin);
         customer.MiddleNameLatin = NormalizeOptionalText(request.MiddleNameLatin);
         customer.LastNameLatin = NormalizeOptionalText(request.LastNameLatin);
-        customer.SetNationalId(encryptedNationalId, nationalIdHash);
+
+        if (nationalIdHash != customer.NationalIdHash)
+            customer.SetNationalId(encryptedNationalId, nationalIdHash);
+
         customer.DateOfBirth = dateOfBirth;
-        customer.SetPassportNumber(encryptedPassportNumber, passportNumberHash);
+
+        if (passportNumberHash != customer.PassportNumberHash)
+            customer.SetPassportNumber(encryptedPassportNumber, passportNumberHash);
+
         customer.PassportExpiresOn = request.PassportExpiresOn;
         customer.Email = NormalizeOptionalText(request.Email);
         customer.PhoneNumber = NormalizeOptionalText(request.PhoneNumber);

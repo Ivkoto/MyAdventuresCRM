@@ -11,11 +11,4 @@ internal static class CustomerValidationProblem
             [nameof(CreateCustomerRequest.ResidenceCountryCode)] =
             ["Residence country code must be a supported European ISO alpha-2 country code."]
         });
-
-    internal static ValidationProblem DateOfBirthDoesNotMatchNationalId()
-        => TypedResults.ValidationProblem(new Dictionary<string, string[]>
-        {
-            [nameof(CreateCustomerRequest.DateOfBirth)] =
-            ["Date of birth must match the date encoded in a valid Bulgarian national ID."]
-        });
 }

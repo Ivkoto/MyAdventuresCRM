@@ -207,7 +207,7 @@ public sealed class CustomerCreateEndpointTests(SqlServerFixture sqlServer)
     }
 
     [Fact]
-    public async Task CreateCustomer_ReturnsBadRequest_WhenDateOfBirthDoesNotMatchNationalId()
+    public async Task CreateCustomer_ForeignIdentifierPassesEgnChecksum_UsesSuppliedDateOfBirth()
     {
         using var factory = CreateFactory();
         using var client = CreateClient(factory);
@@ -218,8 +218,8 @@ public sealed class CustomerCreateEndpointTests(SqlServerFixture sqlServer)
                 "Ivan",
                 null,
                 "Petrov",
-                "8501014017",
-                new DateOnly(1990, 6, 15),
+                "0101050000",
+                new DateOnly(2005, 1, 1),
                 "PA1234567",
                 new DateOnly(2030, 5, 1),
                 null,
@@ -227,20 +227,11 @@ public sealed class CustomerCreateEndpointTests(SqlServerFixture sqlServer)
                 Countries.DefaultCode,
                 null));
 
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
-
-        var problem = await response.Content.ReadFromJsonAsync<ValidationProblemDetails>();
-        Assert.NotNull(problem);
-        Assert.Equal(400, problem.Status);
-        Assert.True(problem.Errors.ContainsKey(nameof(CreateCustomerRequest.DateOfBirth)));
-        Assert.Contains(
-            "Date of birth must match the date encoded in a valid Bulgarian national ID.",
-            problem.Errors[nameof(CreateCustomerRequest.DateOfBirth)]);
-
-        using var scope = factory.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<SuiteCaseDbContext>();
-        Assert.False(await db.Customers.IgnoreQueryFilters().AnyAsync());
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var created = await response.Content.ReadFromJsonAsync<CustomerDetailsResponse>();
+        Assert.NotNull(created);
+        Assert.Equal("0101050000", created.NationalId);
+        Assert.Equal(new DateOnly(2005, 1, 1), created.DateOfBirth);
     }
 
     [Fact]

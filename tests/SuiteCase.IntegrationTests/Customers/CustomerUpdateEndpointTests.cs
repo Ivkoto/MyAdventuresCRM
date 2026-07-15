@@ -174,15 +174,15 @@ public sealed class CustomerUpdateEndpointTests(SqlServerFixture sqlServer)
     }
 
     [Fact]
-    public async Task UpdateCustomer_ReturnsBadRequest_WhenDateOfBirthDoesNotMatchNationalId()
+    public async Task UpdateCustomer_ForeignIdentifierPassesEgnChecksum_PreservesSuppliedDateOfBirth()
     {
         using var factory = CreateFactory();
         using var client = CreateClient(factory);
 
         var created = await CreateCustomerAsync(client, CreateRequest(
-            nationalId: "8501014017",
+            nationalId: "0101050000",
             passportNumber: "PA1234567",
-            dateOfBirth: new DateOnly(1985, 1, 1)));
+            dateOfBirth: new DateOnly(2005, 1, 1)));
 
         var response = await client.PutAsJsonAsync($"/api/customers/{created.Id}",
             new UpdateCustomerRequest(
@@ -193,29 +193,20 @@ public sealed class CustomerUpdateEndpointTests(SqlServerFixture sqlServer)
                 created.MiddleNameLatin,
                 created.LastNameLatin,
                 created.NationalId,
-                new DateOnly(1990, 6, 15),
+                created.DateOfBirth,
                 created.PassportNumber,
                 created.PassportExpiresOn,
-                created.Email,
+                "updated.ivan.petrov@example.com",
                 created.PhoneNumber,
                 created.ResidenceCountryCode,
                 created.Notes));
 
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
-
-        var problem = await response.Content.ReadFromJsonAsync<ValidationProblemDetails>();
-        Assert.NotNull(problem);
-        Assert.Equal(400, problem.Status);
-        Assert.True(problem.Errors.ContainsKey(nameof(CreateCustomerRequest.DateOfBirth)));
-        Assert.Contains(
-            "Date of birth must match the date encoded in a valid Bulgarian national ID.",
-            problem.Errors[nameof(CreateCustomerRequest.DateOfBirth)]);
-
-        var unchanged = await client.GetFromJsonAsync<CustomerDetailsResponse>($"/api/customers/{created.Id}");
-        Assert.NotNull(unchanged);
-        Assert.Equal(new DateOnly(1985, 1, 1), unchanged.DateOfBirth);
-        Assert.Equal("8501014017", unchanged.NationalId);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var updated = await response.Content.ReadFromJsonAsync<CustomerDetailsResponse>();
+        Assert.NotNull(updated);
+        Assert.Equal("0101050000", updated.NationalId);
+        Assert.Equal(new DateOnly(2005, 1, 1), updated.DateOfBirth);
+        Assert.Equal("updated.ivan.petrov@example.com", updated.Email);
     }
 
     [Fact]
@@ -261,6 +252,71 @@ public sealed class CustomerUpdateEndpointTests(SqlServerFixture sqlServer)
         Assert.Null(customer.NationalIdHash);
         Assert.Null(customer.PassportNumberEncrypted);
         Assert.Null(customer.PassportNumberHash);
+    }
+
+    [Fact]
+    public async Task UpdateCustomer_IdentifiersAreUnchanged_PreservesEncryptedAndHashedValues()
+    {
+        using var factory = CreateFactory();
+        using var client = CreateClient(factory);
+
+        var created = await CreateCustomerAsync(client, CreateRequest(
+            nationalId: "9001154218",
+            passportNumber: "PA1234567"));
+
+        string? originalNationalIdEncrypted;
+        string? originalNationalIdHash;
+        string? originalPassportNumberEncrypted;
+        string? originalPassportNumberHash;
+
+        using (var scope = factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<SuiteCaseDbContext>();
+            var customer = await db.Customers
+                .AsNoTracking()
+                .SingleAsync(c => c.Id == created.Id);
+
+            originalNationalIdEncrypted = customer.NationalIdEncrypted;
+            originalNationalIdHash = customer.NationalIdHash;
+            originalPassportNumberEncrypted = customer.PassportNumberEncrypted;
+            originalPassportNumberHash = customer.PassportNumberHash;
+        }
+
+        Assert.NotNull(originalNationalIdEncrypted);
+        Assert.NotNull(originalNationalIdHash);
+        Assert.NotNull(originalPassportNumberEncrypted);
+        Assert.NotNull(originalPassportNumberHash);
+
+        var response = await client.PutAsJsonAsync($"/api/customers/{created.Id}",
+            new UpdateCustomerRequest(
+                created.FirstName,
+                created.MiddleName,
+                created.LastName,
+                created.FirstNameLatin,
+                created.MiddleNameLatin,
+                created.LastNameLatin,
+                created.NationalId,
+                created.DateOfBirth,
+                created.PassportNumber,
+                created.PassportExpiresOn,
+                "updated.ivan.petrov@example.com",
+                created.PhoneNumber,
+                created.ResidenceCountryCode,
+                created.Notes));
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        using var verificationScope = factory.Services.CreateScope();
+        var verificationDb = verificationScope.ServiceProvider.GetRequiredService<SuiteCaseDbContext>();
+        var updatedCustomer = await verificationDb.Customers
+            .AsNoTracking()
+            .SingleAsync(c => c.Id == created.Id);
+
+        Assert.Equal("updated.ivan.petrov@example.com", updatedCustomer.Email);
+        Assert.Equal(originalNationalIdEncrypted, updatedCustomer.NationalIdEncrypted);
+        Assert.Equal(originalNationalIdHash, updatedCustomer.NationalIdHash);
+        Assert.Equal(originalPassportNumberEncrypted, updatedCustomer.PassportNumberEncrypted);
+        Assert.Equal(originalPassportNumberHash, updatedCustomer.PassportNumberHash);
     }
 
     [Fact]

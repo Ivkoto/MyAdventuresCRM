@@ -114,10 +114,10 @@ Search behavior:
 
 Date of birth:
 
-- use the supplied value when present
-- otherwise derive it from a valid Bulgarian EGN
-- return validation `400` when supplied date and valid EGN date differ
-- foreign placeholder values that fail EGN checksum do not derive a date
+- use the supplied value when present; it is authoritative because `NationalId` can contain an untyped foreign identifier
+- otherwise derive it from a value that passes Bulgarian EGN structural and checksum validation
+- passing EGN validation does not prove the identifier's issuing scheme
+- values that fail EGN validation do not derive a date
 
 ### Sensitive Identifiers
 
@@ -215,7 +215,7 @@ Covered behavior includes:
 - duplicate identifiers and safe ProblemDetails contracts
 - real SQL Server unique-constraint classification
 - protected/hash storage
-- date-of-birth/EGN resolution and mismatch
+- date-of-birth resolution from supplied values and EGN-compatible identifiers
 - country default/validation
 - pagination, ordering, and search
 - exact-only sensitive identifier search

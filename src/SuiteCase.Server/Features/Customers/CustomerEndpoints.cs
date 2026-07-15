@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 using SuiteCase.Core.Customers;
-using SuiteCase.Core.Entities;
 using SuiteCase.Core.Security;
 using SuiteCase.Server.Common.DTO;
 using SuiteCase.Server.Data;
@@ -172,17 +171,9 @@ public static class CustomerEndpoints
         var encryptedNationalId = normalizedNationalId is null ? null : dataProtector.Protect(normalizedNationalId);
         var encryptedPassportNumber = normalizedPassportNumber is null ? null : dataProtector.Protect(normalizedPassportNumber);
 
-        Customer customer;
-        try
-        {
-            customer = CustomerFactory.Create(
-                request, normalizedNationalId, encryptedNationalId, nationalIdHash,
-                encryptedPassportNumber, passportNumberHash, residenceCountryCode, DateTimeOffset.UtcNow);
-        }
-        catch (CustomerDateOfBirthMismatchException)
-        {
-            return CustomerValidationProblem.DateOfBirthDoesNotMatchNationalId();
-        }
+        var customer = CustomerFactory.Create(
+            request, normalizedNationalId, encryptedNationalId, nationalIdHash,
+            encryptedPassportNumber, passportNumberHash, residenceCountryCode, DateTimeOffset.UtcNow);
 
         db.Customers.Add(customer);
 
@@ -232,7 +223,10 @@ public static class CustomerEndpoints
         var nationalIdHash = normalizedNationalId is null ? null : dataProtector.Hash(normalizedNationalId);
         var passportNumberHash = normalizedPassportNumber is null ? null : dataProtector.Hash(normalizedPassportNumber);
 
-        if (nationalIdHash != currentCustomer.NationalIdHash && nationalIdHash is not null)
+        var nationalIdChanged = nationalIdHash != currentCustomer.NationalIdHash;
+        var passportNumberChanged = passportNumberHash != currentCustomer.PassportNumberHash;
+
+        if (nationalIdChanged && nationalIdHash is not null)
         {
             var existingCustomerId = await db.Customers
                 .Where(c => c.Id != id && c.NationalIdHash == nationalIdHash)
@@ -246,7 +240,7 @@ public static class CustomerEndpoints
             }
         }
 
-        if (passportNumberHash != currentCustomer.PassportNumberHash && passportNumberHash is not null)
+        if (passportNumberChanged && passportNumberHash is not null)
         {
             var existingCustomerId = await db.Customers
                 .Where(c => c.Id != id && c.PassportNumberHash == passportNumberHash)
@@ -260,19 +254,17 @@ public static class CustomerEndpoints
             }
         }
 
-        var encryptedNationalId = normalizedNationalId is null ? null : dataProtector.Protect(normalizedNationalId);
-        var encryptedPassportNumber = normalizedPassportNumber is null ? null : dataProtector.Protect(normalizedPassportNumber);
+        var encryptedNationalId = nationalIdChanged ? 
+            normalizedNationalId is null ? null : dataProtector.Protect(normalizedNationalId)
+            : currentCustomer.NationalIdEncrypted;
 
-        try
-        {
-            CustomerFactory.Update(
-                currentCustomer, request, normalizedNationalId, encryptedNationalId,
-                nationalIdHash, encryptedPassportNumber, passportNumberHash, residenceCountryCode, DateTimeOffset.UtcNow);
-        }
-        catch (CustomerDateOfBirthMismatchException)
-        {
-            return CustomerValidationProblem.DateOfBirthDoesNotMatchNationalId();
-        }
+        var encryptedPassportNumber = passportNumberChanged ?
+            normalizedPassportNumber is null ? null : dataProtector.Protect(normalizedPassportNumber)
+            : currentCustomer.PassportNumberEncrypted;
+
+        CustomerFactory.Update(
+            currentCustomer, request, normalizedNationalId, encryptedNationalId,
+            nationalIdHash, encryptedPassportNumber, passportNumberHash, residenceCountryCode, DateTimeOffset.UtcNow);
 
         try
         {

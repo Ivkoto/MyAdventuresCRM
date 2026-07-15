@@ -52,7 +52,7 @@ Rules:
 
 - React uses `errors` for per-field messages.
 - Validation responses do not currently include Customer business `code` values.
-- Customer-specific validation currently covers unsupported residence country codes and date-of-birth/EGN mismatch.
+- Customer-specific validation currently covers unsupported residence country codes.
 
 ## Customer Business Errors
 
@@ -180,7 +180,7 @@ Integration tests verify:
 - duplicate National ID/passport `409` with stable code and existing id
 - Customer `404` with `code` and `traceId`
 - safe non-Development `500` with `traceId`
-- date-of-birth/EGN mismatch validation
+- date-of-birth derivation when the supplied value is missing
 - residence-country validation
 - SQL Server unique-constraint classification through a real unique-index violation
 
