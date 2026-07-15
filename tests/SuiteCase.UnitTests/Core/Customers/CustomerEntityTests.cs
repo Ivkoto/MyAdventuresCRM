@@ -1,8 +1,8 @@
 ﻿using SuiteCase.Core.Entities;
 
-namespace SuiteCase.UnitTests.Core.Entities;
+namespace SuiteCase.UnitTests.Core.Customers;
 
-public sealed class CustomerTests
+public sealed class CustomerEntityTests
 {
     [Fact]
     public void SoftDeleted_SetSuccessfully()
