@@ -22,7 +22,8 @@ public sealed class CustomerReadEndpointTests(SqlServerFixture sqlServer)
             CreateRequest(
                 nationalId: "8507120055",
                 passportNumber: "PB6543210",
-                passportExpiresOn: passportExpiresBeforeSixMonths));
+                passportExpiresOn: passportExpiresBeforeSixMonths),
+            TestCancellationToken);
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
 
@@ -139,12 +140,13 @@ public sealed class CustomerReadEndpointTests(SqlServerFixture sqlServer)
         using var factory = CreateFactory();
         using var client = CreateClient(factory);
 
-        var response = await client.GetAsync($"/api/customers{queryString}");
+        var response = await client.GetAsync($"/api/customers{queryString}", TestCancellationToken);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
 
-        var problem = await response.Content.ReadFromJsonAsync<ValidationProblemDetails>();
+        var problem = await response.Content.ReadFromJsonAsync<ValidationProblemDetails>(
+            TestCancellationToken);
         Assert.NotNull(problem);
         Assert.Equal(400, problem.Status);
         Assert.NotEmpty(problem.Errors);
@@ -203,7 +205,8 @@ public sealed class CustomerReadEndpointTests(SqlServerFixture sqlServer)
                 created.Email,
                 created.PhoneNumber,
                 created.ResidenceCountryCode,
-                created.Notes));
+                created.Notes),
+            TestCancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, updateResponse.StatusCode);
 
@@ -299,12 +302,12 @@ public sealed class CustomerReadEndpointTests(SqlServerFixture sqlServer)
         using var factory = CreateFactory();
         using var client = CreateClient(factory);
 
-        var response = await client.GetAsync("/api/customers/99999");
+        var response = await client.GetAsync("/api/customers/99999", TestCancellationToken);
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
 
-        var problem = await response.Content.ReadFromJsonAsync<ProblemDetails>();
+        var problem = await response.Content.ReadFromJsonAsync<ProblemDetails>(TestCancellationToken);
         Assert.NotNull(problem);
         Assert.Equal(404, problem.Status);
         Assert.Equal("Customer not found", problem.Title);

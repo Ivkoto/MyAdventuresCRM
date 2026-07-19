@@ -1,6 +1,9 @@
 using System.Net;
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.Extensions.DependencyInjection;
 using SuiteCase.Core.Countries;
 using SuiteCase.Server.Common.DTO;
 using SuiteCase.Server.Features.Customers.DTO;
@@ -11,8 +14,21 @@ public abstract class CustomerEndpointTestBase(SqlServerFixture sqlServer)
 {
     private readonly SqlServerFixture _sqlServer = sqlServer;
 
+    protected static CancellationToken TestCancellationToken => TestContext.Current.CancellationToken;
+
     protected WebApplicationFactory<Program> CreateFactory()
         => new SuiteCaseWebApplicationFactory(_sqlServer.ConnectionString);
+
+    protected WebApplicationFactory<Program> CreateFactory(IInterceptor databaseInterceptor)
+        => new SuiteCaseWebApplicationFactory(_sqlServer.ConnectionString, databaseInterceptor);
+
+    protected WebApplicationFactory<Program> CreateFactory(
+        Action<IServiceCollection> configureTestServices)
+        => new SuiteCaseWebApplicationFactory(_sqlServer.ConnectionString)
+            .WithWebHostBuilder(builder =>
+            {
+                builder.ConfigureTestServices(configureTestServices);
+            });
 
     protected static HttpClient CreateClient(WebApplicationFactory<Program> factory)
         => factory.CreateClient(new WebApplicationFactoryClientOptions
@@ -49,11 +65,11 @@ public abstract class CustomerEndpointTestBase(SqlServerFixture sqlServer)
         HttpClient client,
         CreateCustomerRequest request)
     {
-        var response = await client.PostAsJsonAsync("/api/customers", request);
+        var response = await client.PostAsJsonAsync("/api/customers", request, TestCancellationToken);
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
 
-        var customer = await response.Content.ReadFromJsonAsync<CustomerDetailsResponse>();
+        var customer = await response.Content.ReadFromJsonAsync<CustomerDetailsResponse>(TestCancellationToken);
         return Assert.IsType<CustomerDetailsResponse>(customer);
     }
 
@@ -62,7 +78,8 @@ public abstract class CustomerEndpointTestBase(SqlServerFixture sqlServer)
         string queryString = "")
     {
         var response = await client.GetFromJsonAsync<PagedResponse<CustomerShortDetailsResponse>>(
-            $"/api/customers{queryString}");
+            $"/api/customers{queryString}",
+            TestCancellationToken);
 
         return Assert.IsType<PagedResponse<CustomerShortDetailsResponse>>(response);
     }

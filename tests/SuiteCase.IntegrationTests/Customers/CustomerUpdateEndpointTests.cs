@@ -44,10 +44,11 @@ public sealed class CustomerUpdateEndpointTests(SqlServerFixture sqlServer)
                 secondCustomer.Email,
                 secondCustomer.PhoneNumber,
                 secondCustomer.ResidenceCountryCode,
-                secondCustomer.Notes));
+                secondCustomer.Notes),
+            TestCancellationToken);
 
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
-        var problem = await response.Content.ReadFromJsonAsync<ProblemDetails>();
+        var problem = await response.Content.ReadFromJsonAsync<ProblemDetails>(TestCancellationToken);
         Assert.NotNull(problem);
         Assert.Equal(409, problem.Status);
         Assert.Equal("Duplicate customer", problem.Title);
@@ -87,10 +88,11 @@ public sealed class CustomerUpdateEndpointTests(SqlServerFixture sqlServer)
                 secondCustomer.Email,
                 secondCustomer.PhoneNumber,
                 secondCustomer.ResidenceCountryCode,
-                secondCustomer.Notes));
+                secondCustomer.Notes),
+            TestCancellationToken);
 
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
-        var problem = await response.Content.ReadFromJsonAsync<ProblemDetails>();
+        var problem = await response.Content.ReadFromJsonAsync<ProblemDetails>(TestCancellationToken);
         Assert.NotNull(problem);
         Assert.Equal(409, problem.Status);
         Assert.Equal("Duplicate customer", problem.Title);
@@ -124,12 +126,14 @@ public sealed class CustomerUpdateEndpointTests(SqlServerFixture sqlServer)
                 created.Email,
                 created.PhoneNumber,
                 "ZZ",
-                created.Notes));
+                created.Notes),
+            TestCancellationToken);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
 
-        var problem = await response.Content.ReadFromJsonAsync<ValidationProblemDetails>();
+        var problem = await response.Content.ReadFromJsonAsync<ValidationProblemDetails>(
+            TestCancellationToken);
         Assert.NotNull(problem);
         Assert.Equal(400, problem.Status);
         Assert.True(problem.Errors.ContainsKey(nameof(CreateCustomerRequest.ResidenceCountryCode)));
@@ -164,10 +168,11 @@ public sealed class CustomerUpdateEndpointTests(SqlServerFixture sqlServer)
                 created.Email,
                 created.PhoneNumber,
                 created.ResidenceCountryCode,
-                created.Notes));
+                created.Notes),
+            TestCancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var updated = await response.Content.ReadFromJsonAsync<CustomerDetailsResponse>();
+        var updated = await response.Content.ReadFromJsonAsync<CustomerDetailsResponse>(TestCancellationToken);
         Assert.NotNull(updated);
         Assert.Equal(new DateOnly(1985, 1, 1), updated.DateOfBirth);
         Assert.Equal("8501014017", updated.NationalId);
@@ -199,10 +204,11 @@ public sealed class CustomerUpdateEndpointTests(SqlServerFixture sqlServer)
                 "updated.ivan.petrov@example.com",
                 created.PhoneNumber,
                 created.ResidenceCountryCode,
-                created.Notes));
+                created.Notes),
+            TestCancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var updated = await response.Content.ReadFromJsonAsync<CustomerDetailsResponse>();
+        var updated = await response.Content.ReadFromJsonAsync<CustomerDetailsResponse>(TestCancellationToken);
         Assert.NotNull(updated);
         Assert.Equal("0101050000", updated.NationalId);
         Assert.Equal(new DateOnly(2005, 1, 1), updated.DateOfBirth);
@@ -234,10 +240,11 @@ public sealed class CustomerUpdateEndpointTests(SqlServerFixture sqlServer)
                 created.Email,
                 created.PhoneNumber,
                 created.ResidenceCountryCode,
-                created.Notes));
+                created.Notes),
+            TestCancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var updated = await response.Content.ReadFromJsonAsync<CustomerDetailsResponse>();
+        var updated = await response.Content.ReadFromJsonAsync<CustomerDetailsResponse>(TestCancellationToken);
         Assert.NotNull(updated);
         Assert.Null(updated.NationalId);
         Assert.Null(updated.PassportNumber);
@@ -246,7 +253,7 @@ public sealed class CustomerUpdateEndpointTests(SqlServerFixture sqlServer)
         var db = scope.ServiceProvider.GetRequiredService<SuiteCaseDbContext>();
         var customer = await db.Customers
             .IgnoreQueryFilters()
-            .SingleAsync(c => c.Id == created.Id);
+            .SingleAsync(c => c.Id == created.Id, TestCancellationToken);
 
         Assert.Null(customer.NationalIdEncrypted);
         Assert.Null(customer.NationalIdHash);
@@ -274,7 +281,7 @@ public sealed class CustomerUpdateEndpointTests(SqlServerFixture sqlServer)
             var db = scope.ServiceProvider.GetRequiredService<SuiteCaseDbContext>();
             var customer = await db.Customers
                 .AsNoTracking()
-                .SingleAsync(c => c.Id == created.Id);
+                .SingleAsync(c => c.Id == created.Id, TestCancellationToken);
 
             originalNationalIdEncrypted = customer.NationalIdEncrypted;
             originalNationalIdHash = customer.NationalIdHash;
@@ -302,7 +309,8 @@ public sealed class CustomerUpdateEndpointTests(SqlServerFixture sqlServer)
                 "updated.ivan.petrov@example.com",
                 created.PhoneNumber,
                 created.ResidenceCountryCode,
-                created.Notes));
+                created.Notes),
+            TestCancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
@@ -310,7 +318,7 @@ public sealed class CustomerUpdateEndpointTests(SqlServerFixture sqlServer)
         var verificationDb = verificationScope.ServiceProvider.GetRequiredService<SuiteCaseDbContext>();
         var updatedCustomer = await verificationDb.Customers
             .AsNoTracking()
-            .SingleAsync(c => c.Id == created.Id);
+            .SingleAsync(c => c.Id == created.Id, TestCancellationToken);
 
         Assert.Equal("updated.ivan.petrov@example.com", updatedCustomer.Email);
         Assert.Equal(originalNationalIdEncrypted, updatedCustomer.NationalIdEncrypted);
@@ -342,10 +350,11 @@ public sealed class CustomerUpdateEndpointTests(SqlServerFixture sqlServer)
                 created.Email,
                 " +359888333444 ",
                 "gb",
-                " Updated notes "));
+                " Updated notes "),
+            TestCancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var updated = await response.Content.ReadFromJsonAsync<CustomerDetailsResponse>();
+        var updated = await response.Content.ReadFromJsonAsync<CustomerDetailsResponse>(TestCancellationToken);
         Assert.NotNull(updated);
         Assert.Equal("Petar", updated.FirstName);
         Assert.Equal("Nikolov", updated.MiddleName);
@@ -369,12 +378,13 @@ public sealed class CustomerUpdateEndpointTests(SqlServerFixture sqlServer)
         var response = await client.PutAsJsonAsync("/api/customers/99999",
             new UpdateCustomerRequest(
                 "Ivan", null, "Petrov", null, null, null,
-                null, new DateOnly(1990, 1, 15), null, null, null, null, null, null));
+                null, new DateOnly(1990, 1, 15), null, null, null, null, null, null),
+            TestCancellationToken);
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
 
-        var problem = await response.Content.ReadFromJsonAsync<ProblemDetails>();
+        var problem = await response.Content.ReadFromJsonAsync<ProblemDetails>(TestCancellationToken);
         Assert.NotNull(problem);
         Assert.Equal(404, problem.Status);
         Assert.Equal("Customer not found", problem.Title);

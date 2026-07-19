@@ -21,10 +21,12 @@ public sealed class CustomerCreateEndpointTests(SqlServerFixture sqlServer)
         using var client = CreateClient(factory);
 
         var firstResponse = await client.PostAsJsonAsync("/api/customers",
-            CreateRequest(nationalId: "9001154218", passportNumber: "PA1234567"));
+            CreateRequest(nationalId: "9001154218", passportNumber: "PA1234567"),
+            TestCancellationToken);
 
         Assert.Equal(HttpStatusCode.Created, firstResponse.StatusCode);
-        var firstCustomer = await firstResponse.Content.ReadFromJsonAsync<CustomerDetailsResponse>();
+        var firstCustomer = await firstResponse.Content.ReadFromJsonAsync<CustomerDetailsResponse>(
+            TestCancellationToken);
         Assert.NotNull(firstCustomer);
 
         var duplicateResponse = await client.PostAsJsonAsync("/api/customers",
@@ -32,10 +34,12 @@ public sealed class CustomerCreateEndpointTests(SqlServerFixture sqlServer)
                 firstName: "Petar",
                 lastName: "Ivanov",
                 nationalId: "9001154218",
-                passportNumber: "PB6543210"));
+                passportNumber: "PB6543210"),
+            TestCancellationToken);
 
         Assert.Equal(HttpStatusCode.Conflict, duplicateResponse.StatusCode);
-        var problem = await duplicateResponse.Content.ReadFromJsonAsync<ProblemDetails>();
+        var problem = await duplicateResponse.Content.ReadFromJsonAsync<ProblemDetails>(
+            TestCancellationToken);
         Assert.NotNull(problem);
         Assert.Equal(409, problem.Status);
         Assert.Equal("Duplicate customer", problem.Title);
@@ -60,10 +64,12 @@ public sealed class CustomerCreateEndpointTests(SqlServerFixture sqlServer)
         using var client = CreateClient(factory);
 
         var firstResponse = await client.PostAsJsonAsync("/api/customers",
-            CreateRequest(nationalId: "9001154218", passportNumber: "PA1234567"));
+            CreateRequest(nationalId: "9001154218", passportNumber: "PA1234567"),
+            TestCancellationToken);
 
         Assert.Equal(HttpStatusCode.Created, firstResponse.StatusCode);
-        var firstCustomer = await firstResponse.Content.ReadFromJsonAsync<CustomerDetailsResponse>();
+        var firstCustomer = await firstResponse.Content.ReadFromJsonAsync<CustomerDetailsResponse>(
+            TestCancellationToken);
         Assert.NotNull(firstCustomer);
 
         var duplicateResponse = await client.PostAsJsonAsync("/api/customers",
@@ -71,10 +77,12 @@ public sealed class CustomerCreateEndpointTests(SqlServerFixture sqlServer)
                 firstName: "Petar",
                 lastName: "Ivanov",
                 nationalId: "8507120055",
-                passportNumber: " PA1234567 "));
+                passportNumber: " PA1234567 "),
+            TestCancellationToken);
 
         Assert.Equal(HttpStatusCode.Conflict, duplicateResponse.StatusCode);
-        var problem = await duplicateResponse.Content.ReadFromJsonAsync<ProblemDetails>();
+        var problem = await duplicateResponse.Content.ReadFromJsonAsync<ProblemDetails>(
+            TestCancellationToken);
         Assert.NotNull(problem);
         Assert.Equal(409, problem.Status);
         Assert.Equal("Duplicate customer", problem.Title);
@@ -103,12 +111,14 @@ public sealed class CustomerCreateEndpointTests(SqlServerFixture sqlServer)
             {
                 firstName = "",
                 lastName = ""
-            });
+            },
+            TestCancellationToken);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
 
-        var problem = await response.Content.ReadFromJsonAsync<ValidationProblemDetails>();
+        var problem = await response.Content.ReadFromJsonAsync<ValidationProblemDetails>(
+            TestCancellationToken);
         Assert.NotNull(problem);
         Assert.Equal(400, problem.Status);
         Assert.NotNull(problem.Errors);
@@ -136,11 +146,12 @@ public sealed class CustomerCreateEndpointTests(SqlServerFixture sqlServer)
         using var client = CreateClient(factory);
 
         var response = await client.PostAsJsonAsync("/api/customers",
-            CreateRequest(residenceCountryCode: null));
+            CreateRequest(residenceCountryCode: null),
+            TestCancellationToken);
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
 
-        var created = await response.Content.ReadFromJsonAsync<CustomerDetailsResponse>();
+        var created = await response.Content.ReadFromJsonAsync<CustomerDetailsResponse>(TestCancellationToken);
         Assert.NotNull(created);
         Assert.Equal("BG", created.ResidenceCountryCode);
         Assert.Equal("Bulgaria", created.ResidenceCountryName);
@@ -164,10 +175,11 @@ public sealed class CustomerCreateEndpointTests(SqlServerFixture sqlServer)
                 "ivan.petrov@example.com",
                 " +359888111222 ",
                 " gb ",
-                " Test customer "));
+                " Test customer "),
+            TestCancellationToken);
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-        var created = await response.Content.ReadFromJsonAsync<CustomerDetailsResponse>();
+        var created = await response.Content.ReadFromJsonAsync<CustomerDetailsResponse>(TestCancellationToken);
         Assert.NotNull(created);
         Assert.Equal("Ivan", created.FirstName);
         Assert.Equal("Georgiev", created.MiddleName);
@@ -198,10 +210,11 @@ public sealed class CustomerCreateEndpointTests(SqlServerFixture sqlServer)
                 null,
                 null,
                 Countries.DefaultCode,
-                null));
+                null),
+            TestCancellationToken);
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-        var created = await response.Content.ReadFromJsonAsync<CustomerDetailsResponse>();
+        var created = await response.Content.ReadFromJsonAsync<CustomerDetailsResponse>(TestCancellationToken);
         Assert.NotNull(created);
         Assert.Equal(new DateOnly(1985, 1, 1), created.DateOfBirth);
     }
@@ -225,10 +238,11 @@ public sealed class CustomerCreateEndpointTests(SqlServerFixture sqlServer)
                 null,
                 null,
                 Countries.DefaultCode,
-                null));
+                null),
+            TestCancellationToken);
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-        var created = await response.Content.ReadFromJsonAsync<CustomerDetailsResponse>();
+        var created = await response.Content.ReadFromJsonAsync<CustomerDetailsResponse>(TestCancellationToken);
         Assert.NotNull(created);
         Assert.Equal("0101050000", created.NationalId);
         Assert.Equal(new DateOnly(2005, 1, 1), created.DateOfBirth);
@@ -241,12 +255,14 @@ public sealed class CustomerCreateEndpointTests(SqlServerFixture sqlServer)
         using var client = CreateClient(factory);
 
         var response = await client.PostAsJsonAsync("/api/customers",
-            CreateRequest(residenceCountryCode: "ZZ"));
+            CreateRequest(residenceCountryCode: "ZZ"),
+            TestCancellationToken);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
 
-        var problem = await response.Content.ReadFromJsonAsync<ValidationProblemDetails>();
+        var problem = await response.Content.ReadFromJsonAsync<ValidationProblemDetails>(
+            TestCancellationToken);
         Assert.NotNull(problem);
         Assert.Equal(400, problem.Status);
         Assert.True(problem.Errors.ContainsKey(nameof(CreateCustomerRequest.ResidenceCountryCode)));
@@ -262,18 +278,19 @@ public sealed class CustomerCreateEndpointTests(SqlServerFixture sqlServer)
         using var client = CreateClient(factory);
 
         var response = await client.PostAsJsonAsync("/api/customers",
-            CreateRequest(nationalId: "9001154218", passportNumber: "PA1234567"));
+            CreateRequest(nationalId: "9001154218", passportNumber: "PA1234567"),
+            TestCancellationToken);
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
 
-        var created = await response.Content.ReadFromJsonAsync<CustomerDetailsResponse>();
+        var created = await response.Content.ReadFromJsonAsync<CustomerDetailsResponse>(TestCancellationToken);
         Assert.NotNull(created);
 
         using var scope = factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<SuiteCaseDbContext>();
         var customer = await db.Customers
             .IgnoreQueryFilters()
-            .SingleAsync(c => c.Id == created.Id);
+            .SingleAsync(c => c.Id == created.Id, TestCancellationToken);
 
         Assert.NotNull(customer.NationalIdEncrypted);
         Assert.NotNull(customer.NationalIdHash);
@@ -293,14 +310,18 @@ public sealed class CustomerCreateEndpointTests(SqlServerFixture sqlServer)
 
         var firstResponse = await client.PostAsJsonAsync(
             "/api/customers",
-            CreateRequest(nationalId: "9001154218", passportNumber: "PA1234567"));
+            CreateRequest(nationalId: "9001154218", passportNumber: "PA1234567"),
+            TestCancellationToken);
 
         Assert.Equal(HttpStatusCode.Created, firstResponse.StatusCode);
 
-        var firstCustomer = await firstResponse.Content.ReadFromJsonAsync<CustomerDetailsResponse>();
+        var firstCustomer = await firstResponse.Content.ReadFromJsonAsync<CustomerDetailsResponse>(
+            TestCancellationToken);
         Assert.NotNull(firstCustomer);
 
-        var deleteResponse = await client.DeleteAsync($"/api/customers/{firstCustomer.Id}");
+        var deleteResponse = await client.DeleteAsync(
+            $"/api/customers/{firstCustomer.Id}",
+            TestCancellationToken);
         Assert.Equal(HttpStatusCode.NoContent, deleteResponse.StatusCode);
 
         var recreateResponse = await client.PostAsJsonAsync(
@@ -309,7 +330,8 @@ public sealed class CustomerCreateEndpointTests(SqlServerFixture sqlServer)
                 firstName: "Ivan",
                 lastName: "Petrov",
                 nationalId: "9001154218",
-                passportNumber: "PA1234567"));
+                passportNumber: "PA1234567"),
+            TestCancellationToken);
 
         Assert.Equal(HttpStatusCode.Created, recreateResponse.StatusCode);
     }

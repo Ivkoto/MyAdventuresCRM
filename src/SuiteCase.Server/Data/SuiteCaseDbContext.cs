@@ -5,6 +5,7 @@ namespace SuiteCase.Server.Data;
 
 public sealed class SuiteCaseDbContext(DbContextOptions<SuiteCaseDbContext> options) : DbContext(options)
 {
+    public DbSet<AuditEvent> AuditEvents => Set<AuditEvent>();
     public DbSet<Customer> Customers => Set<Customer>();
     public DbSet<TravelProgram> TravelPrograms => Set<TravelProgram>();
     public DbSet<TravelProgramOption> TravelProgramOptions => Set<TravelProgramOption>();

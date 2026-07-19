@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using SuiteCase.Server.Data;
 
@@ -11,9 +12,11 @@ using SuiteCase.Server.Data;
 namespace SuiteCase.Server.Data.Migrations
 {
     [DbContext(typeof(SuiteCaseDbContext))]
-    partial class SuiteCaseDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260715102918_AddAuditEvents")]
+    partial class AddAuditEvents
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

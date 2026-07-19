@@ -19,13 +19,14 @@ public sealed class SqlServerExceptionClassifierTests(SqlServerFixture sqlServer
         var firstCustomer = CreateCustomer("Ivan", "Petrov");
         firstCustomer.SetNationalId("protected:first", "duplicate-hash");
         db.Customers.Add(firstCustomer);
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var secondCustomer = CreateCustomer("Petar", "Ivanov");
         secondCustomer.SetNationalId("protected:second", "duplicate-hash");
         db.Customers.Add(secondCustomer);
 
-        var exception = await Assert.ThrowsAsync<DbUpdateException>(() => db.SaveChangesAsync());
+        var exception = await Assert.ThrowsAsync<DbUpdateException>(
+            () => db.SaveChangesAsync(TestContext.Current.CancellationToken));
 
         Assert.True(SqlServerExceptionClassifier.IsUniqueConstraintViolation(exception));
     }

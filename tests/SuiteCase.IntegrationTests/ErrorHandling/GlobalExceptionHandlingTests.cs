@@ -44,14 +44,18 @@ public sealed class GlobalExceptionHandlingTests(SqlServerFixture sqlServer)
             new DateOnly(1990, 1, 1),
             null, null, null, null, null, null);
 
-        var response = await client.PostAsJsonAsync("/api/customers", request);
+        var response = await client.PostAsJsonAsync(
+            "/api/customers",
+            request,
+            TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
 
         var contentType = response.Content.Headers.ContentType?.MediaType;
         Assert.Equal("application/problem+json", contentType);
 
-        var problem = await response.Content.ReadFromJsonAsync<ProblemDetails>();
+        var problem = await response.Content.ReadFromJsonAsync<ProblemDetails>(
+            TestContext.Current.CancellationToken);
         Assert.NotNull(problem);
         Assert.Equal(500, problem.Status);
         // Response must not expose internal exception details

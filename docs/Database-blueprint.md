@@ -1,7 +1,7 @@
 # SuiteCase Database Architecture Blueprint
 
 This document describes the current Phase 1 database architecture for SuiteCase.
-EF Core entities, configurations, and migrations are implemented for the model below. Customer API workflows are implemented; travel-domain API workflows are not implemented yet.
+EF Core entities, configurations, and migrations are implemented for the model below. Customer API workflows and Customer audit writes are implemented; travel-domain API workflows are not implemented yet.
 
 ## Core Principles
 
@@ -23,7 +23,7 @@ EF Core entities, configurations, and migrations are implemented for the model b
 | Travel Programs, Groups, Bookings, Payments, Loyalty schema | Implemented |
 | Customer API | Implemented |
 | Travel-domain APIs and business workflows | Not implemented |
-| AuditEvents | Not implemented |
+| AuditEvents and Customer audit writes | Implemented |
 | Customer document metadata | Not implemented; separate feature planned |
 
 ## High-Level Model
@@ -48,7 +48,57 @@ TravelProgram
 
 LoyaltyDiscountRule
   -> LoyaltyDiscountRuleDestination
+
+AuditEvent (cross-cutting, no FK to audited records)
 ```
+
+## AuditEvent
+
+`AuditEvent` stores append-only records of security-relevant and business-significant actions.
+
+Fields:
+
+```text
+Id
+OperationId
+Action
+EntityType
+EntityId
+ActorId nullable
+CorrelationId nullable
+Details nullable
+OccurredAt
+```
+
+Rules:
+
+- `Action`, `EntityType`, and `EntityId` are required stable strings.
+- `OperationId` is a required unique UUIDv7 transaction marker used for ambiguous-commit verification.
+- `OccurredAt` is a required UTC `DateTimeOffset`.
+- `ActorId` remains null until authentication supplies a stable staff identifier.
+- Audit rows never store raw, encrypted, or hashed sensitive identifiers.
+- Audit rows have no foreign keys to audited records so history survives record lifecycle changes.
+- Database-level append-only permissions and retention policy are pending production decisions.
+
+Indexes:
+
+```text
+(EntityType, EntityId, OccurredAt)
+OccurredAt
+Action
+ActorId
+CorrelationId
+OperationId unique
+```
+
+## SQL Connection Resilience
+
+- SQL Server is configured with `EnableRetryOnFailure` so EF Core retries recognized transient database and network failures.
+- A single query or `SaveChangesAsync` call is handled as one retriable operation by the configured execution strategy.
+- Code that manually groups multiple database operations must execute the complete transaction through `DbContext.Database.CreateExecutionStrategy()`.
+- Current audited writes use `AuditTransaction`; its unique audit `OperationId` verifies whether an ambiguous commit actually succeeded.
+- The audit `OperationId` covers retries inside one server operation, not replay of a separately submitted HTTP request.
+- SQL transactions must not remain open across pCloud or other external service calls. Such workflows require an outbox/background process.
 
 ## Customer
 
