@@ -19,7 +19,7 @@ public sealed class CustomerDeleteEndpointTests(SqlServerFixture sqlServer)
 
         var created = await CreateCustomerAsync(client, CreateRequest());
 
-        var deleteResponse = await client.DeleteAsync($"/api/customers/{created.Id}");
+        var deleteResponse = await client.DeleteAsync($"/api/customers/{created.Id}", TestCancellationToken);
 
         Assert.Equal(HttpStatusCode.NoContent, deleteResponse.StatusCode);
 
@@ -28,13 +28,15 @@ public sealed class CustomerDeleteEndpointTests(SqlServerFixture sqlServer)
             var db = scope.ServiceProvider.GetRequiredService<SuiteCaseDbContext>();
             var deletedCustomer = await db.Customers
                 .IgnoreQueryFilters()
-                .SingleAsync(customer => customer.Id == created.Id);
+                .SingleAsync(customer => customer.Id == created.Id, TestCancellationToken);
 
             Assert.True(deletedCustomer.IsDeleted);
             Assert.NotNull(deletedCustomer.DeletedAt);
         }
 
-        var secondDeleteResponse = await client.DeleteAsync($"/api/customers/{created.Id}");
+        var secondDeleteResponse = await client.DeleteAsync(
+            $"/api/customers/{created.Id}",
+            TestCancellationToken);
 
         Assert.Equal(HttpStatusCode.NotFound, secondDeleteResponse.StatusCode);
     }
@@ -45,12 +47,12 @@ public sealed class CustomerDeleteEndpointTests(SqlServerFixture sqlServer)
         using var factory = CreateFactory();
         using var client = CreateClient(factory);
 
-        var response = await client.DeleteAsync("/api/customers/99999");
+        var response = await client.DeleteAsync("/api/customers/99999", TestCancellationToken);
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
 
-        var problem = await response.Content.ReadFromJsonAsync<ProblemDetails>();
+        var problem = await response.Content.ReadFromJsonAsync<ProblemDetails>(TestCancellationToken);
         Assert.NotNull(problem);
         Assert.Equal(404, problem.Status);
         Assert.Equal("Customer not found", problem.Title);

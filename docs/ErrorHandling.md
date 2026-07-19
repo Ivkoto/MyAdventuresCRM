@@ -11,12 +11,12 @@ Implemented:
 - stable Customer error codes
 - `traceId` correlation
 - source-generated Customer endpoint logging
+- Customer audit correlation through `AuditEvent.CorrelationId`
 
 Not implemented:
 
 - authentication and final `401` / `403` contracts
 - durable centralized log storage
-- audit logging
 - generic cross-slice problem factory
 
 ## Response Contracts
@@ -121,9 +121,9 @@ Example failures covered by this path include Data Protection key-ring mismatch 
 
 `CustomerValidationProblem` owns Customer-specific `400 ValidationProblem` responses.
 
-`DbExceptionsHelper` identifies SQL Server unique-constraint violations. It does not identify the conflicting Customer field or construct HTTP responses.
+`SqlServerExceptionClassifier` identifies SQL Server unique-constraint violations. It does not identify the conflicting Customer field or construct HTTP responses.
 
-After a unique-constraint failure, `CustomerQueries.ResolveSensitiveIdentifierConflictAsync` queries active Customers by the attempted hashes. It returns a `SensitiveIdentifierConflict` containing:
+After a unique-constraint failure, `CustomerQueries.FindSensitiveIdentifierConflictAsync` queries active Customers by the attempted hashes. It returns a `SensitiveIdentifierConflict` containing:
 
 - `Kind`: `NationalId` or `PassportNumber`
 - `ExistingCustomerId`: the conflicting active Customer id
@@ -153,7 +153,7 @@ Human-readable `title` and `detail` describe the error without echoing submitted
 `code` and `traceId` serve different purposes:
 
 - `code`: UI branching and localization
-- `traceId`: support correlation across response, logs, and future audit events
+- `traceId`: support correlation across responses, operational logs, and audit events
 
 Endpoint-local Customer problems add:
 
@@ -183,11 +183,11 @@ Integration tests verify:
 - date-of-birth derivation when the supplied value is missing
 - residence-country validation
 - SQL Server unique-constraint classification through a real unique-index violation
+- safe `500 ProblemDetails` when an audit write fails
 
 ## Pending Work
 
 - define `401` and `403` response contracts with authentication
 - configure durable production log storage and retention
-- add audit correlation through `AuditEvent.CorrelationId`
 - add a focused concurrent integration test that forces two endpoint requests through the unique-constraint race window
 - decide whether shared problem mechanics are justified after the next API slice

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using SuiteCase.Core.Security;
+using SuiteCase.Server.Auditing;
 using SuiteCase.Server.Data;
 using SuiteCase.Server.Features.Customers;
 using SuiteCase.Server.Security;
@@ -15,13 +16,15 @@ builder.Services.AddValidation();
 builder.Services.AddDbContext<SuiteCaseDbContext>(options =>
 {
     options.UseSqlServer(
-        builder.Configuration.GetConnectionString("DatabaseConnection"));
+        builder.Configuration.GetConnectionString("DatabaseConnection"),
+        sqlOptions => sqlOptions.EnableRetryOnFailure());
 });
 
 builder.Services.AddDataProtection().SetApplicationName("SuiteCase");
 //.PersistKeysToFileSystem(new DirectoryInfo(builder.Configuration["DataProtection:KeyRingPath"]!));
 
 builder.Services.AddScoped<ISensitiveDataProtector, SensitiveDataProtector>();
+builder.Services.AddScoped<IAuditEventWriter, EfCoreAuditEventWriter>();
 
 var app = builder.Build();
 

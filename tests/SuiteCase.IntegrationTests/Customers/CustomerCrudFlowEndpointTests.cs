@@ -15,9 +15,12 @@ public sealed class CustomerCrudFlowEndpointTests(SqlServerFixture sqlServer)
         using var factory = CreateFactory();
         using var client = CreateClient(factory);
 
-        var response = await client.PostAsJsonAsync("/api/customers", CreateRequest());
+        var response = await client.PostAsJsonAsync(
+            "/api/customers",
+            CreateRequest(),
+            TestCancellationToken);
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-        var created = await response.Content.ReadFromJsonAsync<CustomerDetailsResponse>();
+        var created = await response.Content.ReadFromJsonAsync<CustomerDetailsResponse>(TestCancellationToken);
         Assert.NotNull(created);
         Assert.Equal("Ivan", created.FirstName);
         Assert.Equal("Georgiev", created.MiddleName);
@@ -51,7 +54,9 @@ public sealed class CustomerCrudFlowEndpointTests(SqlServerFixture sqlServer)
         Assert.Equal(new DateOnly(2030, 5, 1), listCustomer.PassportExpiresOn);
         Assert.True(listCustomer.IsPassportValid);
 
-        var details = await client.GetFromJsonAsync<CustomerDetailsResponse>($"/api/customers/{created.Id}");
+        var details = await client.GetFromJsonAsync<CustomerDetailsResponse>(
+            $"/api/customers/{created.Id}",
+            TestCancellationToken);
         Assert.NotNull(details);
         Assert.Equal(created.Id, details.Id);
         Assert.Equal("9001154218", details.NationalId);
@@ -71,11 +76,11 @@ public sealed class CustomerCrudFlowEndpointTests(SqlServerFixture sqlServer)
                 "ivan.petrov@example.com",
                 "+359888111222",
                 "GB",
-                "Updated notes"
-            )
-        );
+                "Updated notes"),
+            TestCancellationToken);
         Assert.Equal(HttpStatusCode.OK, updateResponse.StatusCode);
-        var updated = await updateResponse.Content.ReadFromJsonAsync<CustomerDetailsResponse>();
+        var updated = await updateResponse.Content.ReadFromJsonAsync<CustomerDetailsResponse>(
+            TestCancellationToken);
         Assert.NotNull(updated);
         Assert.Equal("Nikolov", updated.MiddleName);
         Assert.Equal("Updated notes", updated.Notes);
@@ -83,13 +88,14 @@ public sealed class CustomerCrudFlowEndpointTests(SqlServerFixture sqlServer)
         Assert.Equal("GB", updated.ResidenceCountryCode);
         Assert.Equal("United Kingdom", updated.ResidenceCountryName);
 
-        var deleteResponse = await client.DeleteAsync($"/api/customers/{created.Id}");
+        var deleteResponse = await client.DeleteAsync($"/api/customers/{created.Id}", TestCancellationToken);
         Assert.Equal(HttpStatusCode.NoContent, deleteResponse.StatusCode);
 
-        var getDeletedResponse = await client.GetAsync($"/api/customers/{created.Id}");
+        var getDeletedResponse = await client.GetAsync($"/api/customers/{created.Id}", TestCancellationToken);
         Assert.Equal(HttpStatusCode.NotFound, getDeletedResponse.StatusCode);
         Assert.Equal("application/problem+json", getDeletedResponse.Content.Headers.ContentType?.MediaType);
-        var notFoundProblem = await getDeletedResponse.Content.ReadFromJsonAsync<ProblemDetails>();
+        var notFoundProblem = await getDeletedResponse.Content.ReadFromJsonAsync<ProblemDetails>(
+            TestCancellationToken);
         Assert.NotNull(notFoundProblem);
         Assert.Equal(404, notFoundProblem.Status);
         Assert.Equal("Customer not found", notFoundProblem.Title);

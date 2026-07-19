@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -13,15 +14,19 @@ namespace SuiteCase.IntegrationTests;
 internal sealed class SuiteCaseWebApplicationFactory : WebApplicationFactory<Program>
 {
     private readonly string _databaseConnectionString;
+    private readonly IInterceptor? _databaseInterceptor;
 
-    public SuiteCaseWebApplicationFactory(string serverConnectionString)
+    public SuiteCaseWebApplicationFactory(
+        string serverConnectionString,
+        IInterceptor? databaseInterceptor = null)
     {
         var connectionStringBuilder = new SqlConnectionStringBuilder(serverConnectionString)
         {
-            InitialCatalog = $"SuiteCaseIntegrationTests_{Guid.NewGuid():N}"            
+            InitialCatalog = $"SuiteCaseIntegrationTests_{Guid.NewGuid():N}"
         };
 
         _databaseConnectionString = connectionStringBuilder.ConnectionString;
+        _databaseInterceptor = databaseInterceptor;
     }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -36,7 +41,14 @@ internal sealed class SuiteCaseWebApplicationFactory : WebApplicationFactory<Pro
             services.RemoveAll<ISensitiveDataProtector>();
 
             services.AddDbContext<SuiteCaseDbContext>(options =>
-                options.UseSqlServer(_databaseConnectionString));
+            {
+                options.UseSqlServer(
+                    _databaseConnectionString,
+                    sqlOptions => sqlOptions.EnableRetryOnFailure());
+
+                if (_databaseInterceptor is not null)
+                    options.AddInterceptors(_databaseInterceptor);
+            });
 
             services.AddScoped<ISensitiveDataProtector, FakeSensitiveDataProtector>();
 

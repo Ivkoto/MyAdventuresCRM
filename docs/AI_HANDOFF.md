@@ -11,6 +11,7 @@ Use this file to start a clean engineering session. It describes the current imp
 - Solution structure: `SuiteCase.Core`, `SuiteCase.Server`, React client, unit tests, integration tests.
 - Server uses vertical feature slices without full Clean Architecture.
 - SQL Server and EF Core migrations are the database source of truth.
+- .NET NuGet versions are centralized in the root `Directory.Packages.props`; React/npm dependencies remain separate.
 - Customer is the only implemented API slice.
 - Travel Programs, Groups, Bookings, Payments, and Loyalty have database models but no API workflows yet.
 
@@ -24,8 +25,9 @@ Use this file to start a clean engineering session. It describes the current imp
 | Customer error handling and operational logging | Implemented |
 | Travel-domain EF model and migrations | Implemented |
 | Travel-domain API workflows | Not implemented |
-| Authentication/authorization | Not implemented |
-| AuditEvents / IAuditLogger | Not implemented |
+| Authentication/authorization | ASP.NET Core Identity selected; not implemented |
+| Customer audit events / `IAuditEventWriter` | Implemented |
+| Travel Board live synchronization | SignalR design selected; not implemented |
 | Customer document storage / pCloud | Not implemented |
 | Durable production log sink | Not configured |
 
@@ -43,8 +45,6 @@ ui/
   SuiteCase.Client/
 docs/
 ```
-
-Repository note: `.gitignore` currently ignores `docs/`. Documentation changes remain local unless that rule is intentionally changed.
 
 ## Architecture Rules
 
@@ -72,11 +72,14 @@ src/SuiteCase.Server/Features/Customers/CustomerEndpoints.cs
 src/SuiteCase.Server/Features/Customers/CustomerFactory.cs
 src/SuiteCase.Server/Features/Customers/DTO/
 src/SuiteCase.Server/Features/Customers/ErrorHandling/
-src/SuiteCase.Server/Features/Customers/HelpersMapping/
 src/SuiteCase.Server/Features/Customers/Logging/
+src/SuiteCase.Server/Features/Customers/Mapping/
 src/SuiteCase.Server/Features/Customers/Queries/
+src/SuiteCase.Server/Features/Customers/Validation/
+src/SuiteCase.Server/Auditing/
 src/SuiteCase.Core/Customers/
 src/SuiteCase.Core/Countries/Countries.cs
+src/SuiteCase.Core/Entities/AuditEvent.cs
 ```
 
 ### Directory Pagination and Search
@@ -156,7 +159,7 @@ Security:SensitiveDataHashKey
 - Validation uses `ValidationProblemDetails`.
 - Customer `404` and `409` responses use `ProblemDetails` with stable `code` values.
 - Duplicate National ID and passport pre-checks return specific `409` codes with `existingCustomerId`.
-- After a unique-index save conflict, `CustomerQueries.ResolveSensitiveIdentifierConflictAsync` rechecks the attempted hashes and returns a structured `NationalId` or `PassportNumber` conflict.
+- After a unique-index save conflict, `CustomerQueries.FindSensitiveIdentifierConflictAsync` rechecks the attempted hashes and returns a structured `NationalId` or `PassportNumber` conflict.
 - Recognized save races return the same specific duplicate code and `existingCustomerId`; unrecognized unique constraints are rethrown to the global exception pipeline.
 - Endpoint-local Customer problems include `traceId`.
 - Non-Development unhandled exceptions return safe `500 ProblemDetails`.
@@ -165,6 +168,19 @@ Security:SensitiveDataHashKey
 - Authentication is required before the API is production-ready.
 
 See `docs/ErrorHandling.md` for the complete contract.
+
+### Customer Audit
+
+- `IAuditEventWriter.Record` stages an event in the current scoped `SuiteCaseDbContext`.
+- Implemented actions: `customer.created`, `customer.updated`, and `customer.soft-deleted`.
+- Each audit row has a unique UUIDv7 `OperationId` used to verify ambiguous SQL commit outcomes.
+- `AuditTransaction` executes audited writes through the configured EF execution strategy and verifies successful commits by `OperationId`.
+- Create uses two saves because `Customer.Id` is database-generated; update and delete preserve tracked state until commit is confirmed.
+- Customer list and details reads are not audited by product decision. Future sensitive exports and document downloads remain auditable actions.
+- Audit rows store request correlation IDs and no sensitive values.
+- ASP.NET Core Identity is selected but not implemented; `ActorId` remains `null` until the authenticated `ApplicationUser.Id` is available.
+
+See `docs/Audit.md` for the complete contract and pending production requirements.
 
 ## Database
 
@@ -177,6 +193,9 @@ See `docs/ErrorHandling.md` for the complete contract.
 - Bookings, BookingOptions, BookingOptionalActivities, BookingItems, BookingTravelLegs
 - PaymentMilestones and Payments
 - LoyaltyDiscountRules and LoyaltyDiscountRuleDestinations
+- AuditEvents
+
+SQL Server transient retries are enabled with `EnableRetryOnFailure`. Manually grouped database operations must run through the EF execution strategy; current audited writes use `AuditTransaction` for this purpose.
 
 Important migrations:
 
@@ -187,6 +206,7 @@ Important migrations:
 - `StandardizeTimestampsToDateTimeOffset`
 - `RenameProgramTablesToTravelPrograms`
 - `UseCustomerResidenceCountryCode`
+- `AddAuditEvents`
 
 Travel and booking rules are documented in `docs/Database-blueprint.md`.
 
@@ -200,6 +220,7 @@ Customer integration tests are split by behavior:
 - `CustomerDeleteEndpointTests`
 - `CustomerCrudFlowEndpointTests`
 - shared setup in `CustomerEndpointTestBase`
+- audit behavior in `CustomerAuditEventTests`
 
 Test infrastructure:
 
@@ -221,6 +242,7 @@ Covered behavior includes:
 - exact-only sensitive identifier search
 - passport validity and age calculation
 - global safe `500 ProblemDetails`
+- atomic Customer mutation audit writes
 
 Known test gap:
 
@@ -239,26 +261,28 @@ dotnet ef migrations list --project .\src\SuiteCase.Server --startup-project .\s
 
 - `docs/Database-blueprint.md`: implemented EF/database model and integrity rules
 - `docs/ErrorHandling.md`: current API error and logging contract
-- `docs/Audit.md`: pending audit architecture and required tests
+- `docs/Audit.md`: implemented Customer audit architecture and pending production requirements
+- `docs/Authentication.md`: selected ASP.NET Core Identity architecture and pending implementation
+- `docs/LiveSynchronization.md`: selected SignalR and EF Core concurrency design for Travel Board collaboration
 - `docs/Documents.md`: pending pCloud/customer-document architecture
 
 ## Next Work
 
-1. Decide whether `docs/` should be tracked and update `.gitignore` if required.
-2. Update/approve the pending decisions in `Audit.md`.
-3. Implement `AuditEvents` and `IAuditLogger` with atomic mutation audit writes.
-4. Add authentication and authorization policies.
-5. Configure production Data Protection key-ring persistence.
-6. Configure durable production log storage and retention.
-7. Implement the next vertical slice: Travel Programs, Groups, and Options.
+1. Implement ASP.NET Core Identity and authorization following `docs/Authentication.md`.
+2. Populate `AuditEvent.ActorId` from the authenticated `ApplicationUser.Id`.
+3. Define audit retention, access, export, and database append-only policies.
+4. Configure production Data Protection key-ring persistence.
+5. Configure durable production log storage and retention.
+6. Implement the next vertical slice: Travel Programs, Groups, and Options.
+7. Implement Travel Board concurrency and SignalR synchronization with the Travel Board workflow.
 8. Design global cross-entity search before customer/history volume requires it.
 9. Implement Customer documents through the backend pCloud adapter after compliance verification.
 
-## Known Build Warnings
+## Build Health
 
-- `Microsoft.OpenApi` `NU1903` vulnerability warning
-- JavaScript dependency audit warnings
-- possible `ui/SuiteCase.Client/dist` reference warning
+- `dotnet build .\SuiteCase.slnx` completes with zero warnings.
+- NuGet reports no vulnerable or deprecated packages for the .NET projects.
+- `npm audit` reports zero vulnerabilities for `SuiteCase.Client`.
 
 ## Git Conventions
 

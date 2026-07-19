@@ -22,14 +22,9 @@ public static class CustomerFactory
     /// <param name="createdAt">The creation timestamp assigned to the customer.</param>
     /// <returns>The initialized customer entity.</returns>
     public static Customer Create(
-        CreateCustomerRequest request,
-        string? normalizedNationalId,
-        string? encryptedNationalId,
-        string? nationalIdHash,
-        string? encryptedPassportNumber,
-        string? passportNumberHash,
-        string residenceCountryCode,
-        DateTimeOffset createdAt)
+        CreateCustomerRequest request, string? normalizedNationalId, string? encryptedNationalId,
+        string? nationalIdHash, string? encryptedPassportNumber, string? passportNumberHash,
+        string residenceCountryCode, DateTimeOffset createdAt)
     {
         var dateOfBirth = CustomerDateOfBirthResolver.Resolve(normalizedNationalId, request.DateOfBirth);
 
@@ -66,15 +61,9 @@ public static class CustomerFactory
     /// <param name="residenceCountryCode">The normalized ISO alpha-2 residence country code.</param>
     /// <param name="updatedAt">The update timestamp assigned to the customer.</param>
     public static void Update(
-        Customer customer,
-        UpdateCustomerRequest request,
-        string? normalizedNationalId,
-        string? encryptedNationalId,
-        string? nationalIdHash,
-        string? encryptedPassportNumber,
-        string? passportNumberHash,
-        string residenceCountryCode,
-        DateTimeOffset updatedAt)
+        Customer customer, UpdateCustomerRequest request, string? normalizedNationalId,
+        string? encryptedNationalId, string? nationalIdHash, string? encryptedPassportNumber,
+        string? passportNumberHash, string residenceCountryCode, DateTimeOffset updatedAt)
     {
         var dateOfBirth = CustomerDateOfBirthResolver.Resolve(normalizedNationalId, request.DateOfBirth);
 

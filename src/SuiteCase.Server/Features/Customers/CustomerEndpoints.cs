@@ -1,10 +1,15 @@
+using System.Diagnostics;
+using System.Globalization;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 using SuiteCase.Core.Customers;
+using SuiteCase.Core.Entities;
 using SuiteCase.Core.Security;
+using SuiteCase.Server.Auditing;
 using SuiteCase.Server.Common.DTO;
 using SuiteCase.Server.Data;
 using SuiteCase.Server.Data.ErrorHandling;
+using SuiteCase.Server.Features.Customers.Auditing;
 using SuiteCase.Server.Features.Customers.DTO;
 using SuiteCase.Server.Features.Customers.ErrorHandling;
 using SuiteCase.Server.Features.Customers.Logging;
@@ -113,7 +118,8 @@ public static class CustomerEndpoints
 
     private static async Task<Results<Ok<CustomerDetailsResponse>, ProblemHttpResult>> GetCustomerById(
         int id, HttpContext httpContext, SuiteCaseDbContext db,
-        ISensitiveDataProtector dataProtector, ILogger<CustomerEndpointLogs> logger, CancellationToken ct)
+        ISensitiveDataProtector dataProtector, ILogger<CustomerEndpointLogs> logger,
+        CancellationToken ct)
     {
         var customer = await db.Customers.AsNoTracking().SingleOrDefaultAsync(c => c.Id == id, ct);
 
@@ -128,7 +134,8 @@ public static class CustomerEndpoints
 
     private static async Task<Results<CreatedAtRoute<CustomerDetailsResponse>, ProblemHttpResult, ValidationProblem>> CreateCustomer(
         CreateCustomerRequest request, HttpContext httpContext, SuiteCaseDbContext db,
-        ISensitiveDataProtector dataProtector, ILogger<CustomerEndpointLogs> logger, CancellationToken ct)
+        ISensitiveDataProtector dataProtector, IAuditEventWriter auditEventWriter,
+        ILogger<CustomerEndpointLogs> logger, CancellationToken ct)
     {
         var isValidCountryCode = CustomerCountryCodeResolver.TryGetValidResidenceCountryCode(request.ResidenceCountryCode, out var residenceCountryCode);
         if (!isValidCountryCode)
@@ -170,16 +177,35 @@ public static class CustomerEndpoints
 
         var encryptedNationalId = normalizedNationalId is null ? null : dataProtector.Protect(normalizedNationalId);
         var encryptedPassportNumber = normalizedPassportNumber is null ? null : dataProtector.Protect(normalizedPassportNumber);
-
-        var customer = CustomerFactory.Create(
-            request, normalizedNationalId, encryptedNationalId, nationalIdHash,
-            encryptedPassportNumber, passportNumberHash, residenceCountryCode, DateTimeOffset.UtcNow);
-
-        db.Customers.Add(customer);
+        var createdAt = DateTimeOffset.UtcNow;
+        var auditOperationId = Guid.CreateVersion7();
+        var correlationId = Activity.Current?.Id ?? httpContext.TraceIdentifier;
+        Customer customer;
 
         try
         {
-            await db.SaveChangesAsync(ct);
+            customer = await AuditTransaction.ExecuteAsync(db, auditOperationId,
+                async operationCt =>
+                {
+                    db.ChangeTracker.Clear();
+
+                    var newCustomer = CustomerFactory.Create(
+                        request, normalizedNationalId, encryptedNationalId, nationalIdHash,
+                        encryptedPassportNumber, passportNumberHash, residenceCountryCode, createdAt);
+
+                    db.Customers.Add(newCustomer);
+                    await db.SaveChangesAsync(operationCt);
+
+                    auditEventWriter.Record(
+                        auditOperationId,
+                        CustomerAuditActions.Created,
+                        CustomerAuditActions.EntityType,
+                        newCustomer.Id.ToString(CultureInfo.InvariantCulture),
+                        correlationId);
+                    await db.SaveChangesAsync(operationCt);
+
+                    return newCustomer;
+                }, ct);
         }
         catch (DbUpdateException ex) when (SqlServerExceptionClassifier.IsUniqueConstraintViolation(ex))
         {
@@ -203,7 +229,8 @@ public static class CustomerEndpoints
 
     private static async Task<Results<Ok<CustomerDetailsResponse>, ProblemHttpResult, ValidationProblem>> UpdateCustomer(
         int id, UpdateCustomerRequest request, HttpContext httpContext, SuiteCaseDbContext db,
-        ISensitiveDataProtector dataProtector, ILogger<CustomerEndpointLogs> logger, CancellationToken ct)
+        ISensitiveDataProtector dataProtector, IAuditEventWriter auditEventWriter,
+        ILogger<CustomerEndpointLogs> logger, CancellationToken ct)
     {
         var currentCustomer = await db.Customers.SingleOrDefaultAsync(c => c.Id == id, ct);
 
@@ -266,9 +293,19 @@ public static class CustomerEndpoints
             currentCustomer, request, normalizedNationalId, encryptedNationalId,
             nationalIdHash, encryptedPassportNumber, passportNumberHash, residenceCountryCode, DateTimeOffset.UtcNow);
 
+        var auditOperationId = Guid.CreateVersion7();
+        var correlationId = Activity.Current?.Id ?? httpContext.TraceIdentifier;
+
+        auditEventWriter.Record(
+            auditOperationId,
+            CustomerAuditActions.Updated,
+            CustomerAuditActions.EntityType,
+            id.ToString(CultureInfo.InvariantCulture),
+            correlationId);
+
         try
         {
-            await db.SaveChangesAsync(ct);
+            await AuditTransaction.CommitTrackedChangesAsync(db, auditOperationId, ct);
         }
         catch (DbUpdateException ex) when (SqlServerExceptionClassifier.IsUniqueConstraintViolation(ex))
         {
@@ -288,7 +325,7 @@ public static class CustomerEndpoints
 
     private static async Task<Results<NoContent, ProblemHttpResult>> SoftDeleteCustomer(
         int id, HttpContext httpContext, SuiteCaseDbContext db,
-        ILogger<CustomerEndpointLogs> logger, CancellationToken ct)
+        IAuditEventWriter auditEventWriter, ILogger<CustomerEndpointLogs> logger, CancellationToken ct)
     {
         var currentCustomer = await db.Customers.SingleOrDefaultAsync(c => c.Id == id, ct);
 
@@ -299,7 +336,16 @@ public static class CustomerEndpoints
         }
 
         currentCustomer.SoftDelete(DateTimeOffset.UtcNow);
-        await db.SaveChangesAsync(ct);
+        var auditOperationId = Guid.CreateVersion7();
+        var correlationId = Activity.Current?.Id ?? httpContext.TraceIdentifier;
+
+        auditEventWriter.Record(
+            auditOperationId,
+            CustomerAuditActions.SoftDeleted,
+            CustomerAuditActions.EntityType,
+            id.ToString(CultureInfo.InvariantCulture),
+            correlationId);
+        await AuditTransaction.CommitTrackedChangesAsync(db, auditOperationId, ct);
 
         CustomerEndpointLogger.CustomerSoftDeleted(logger, id);
 
