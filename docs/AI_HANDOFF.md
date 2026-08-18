@@ -257,6 +257,38 @@ dotnet test .\tests\SuiteCase.IntegrationTests\SuiteCase.IntegrationTests.csproj
 dotnet ef migrations list --project .\src\SuiteCase.Server --startup-project .\src\SuiteCase.Server
 ```
 
+## React Client Status
+
+The React client is currently a minimal Vite placeholder and does not contain production CRM screens.
+
+Current stack:
+
+- React 19
+- TypeScript 5.9
+- Vite 8
+- ESLint 9
+- Visual Studio JavaScript SDK integration
+
+Current implementation:
+
+- `App.tsx` renders only a temporary SuiteCase logo and development message.
+- No routing, application shell, navigation, API client, server-state management, form handling, component library, or frontend tests are implemented.
+- Brand assets are available in `ui/SuiteCase.Client/public/`.
+- The generated Vite starter styles and README have not been replaced with project-specific UI documentation.
+
+Development configuration:
+
+- Vite development URL: `https://localhost:54479`
+- `/api`, `/swagger`, and `/openapi` are proxied to the ASP.NET Core Server.
+- Default backend target: `https://localhost:7295`
+- React/npm dependencies are managed independently from backend central package management.
+
+Integration boundary:
+
+- Use the existing `Customer API` section as the backend contract.
+- Authentication, Customer documents, Travel APIs, and SignalR are not implemented yet.
+- Keep the initial UI architecture lightweight until real workflows establish reusable patterns.
+
 ## Technical Documentation
 
 - `docs/Database-blueprint.md`: implemented EF/database model and integrity rules
